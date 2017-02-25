@@ -334,7 +334,7 @@ function searchControl(action) {
 
 function updateSearchStatus() {
     $.getJSON(searchControlURI).then(function (data) {
-        $('#search-switch').prop('checked', data.status);
+        $('#search-switch').prop('checked', data.status)
         $('#scan-here').toggleClass('disabled', !data.status)
     })
 }
@@ -840,7 +840,7 @@ function setupGymMarker(item) {
             url: 'static/forts/' + Store.get('gymMarkerStyle') + '/' + gymTypes[item['team_id']] + (item['team_id'] !== 0 ? '_' + getGymLevel(item['gym_points']) : '') + '.png',
             scaledSize: new google.maps.Size(48, 48)
         }
-    });
+    })
 
     if (!marker.rangeCircle && isRangeActive(map)) {
         marker.rangeCircle = addRangeCircle(marker, map, 'gym', item['team_id'])
@@ -1160,7 +1160,7 @@ function showInBoundsMarkers(markers, type) {
             if (marker.getAnimation) {
                 marker.oldAnimation = marker.getAnimation()
             }
-            if (marker.rangeCircle) marker.rangeCircle.setMap(null);
+            if (marker.rangeCircle) marker.rangeCircle.setMap(null)
             marker.setMap(null)
         }
     })
@@ -2104,7 +2104,7 @@ $(function () {
     $selectLuredPokestopsOnly.select2({
         placeholder: 'Only Show Lured Pokestops',
         minimumResultsForSearch: Infinity
-    });
+    })
 
     $selectLuredPokestopsOnly.on('change', function () {
         Store.set('showLuredPokestopsOnly', this.value)
