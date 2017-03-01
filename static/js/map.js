@@ -397,6 +397,15 @@ function openMapDirections(lat, lng) { // eslint-disable-line no-unused-vars
     var url = 'https://www.google.com/maps/?daddr=' + lat + ',' + lng
     window.open(url, '_blank')
 }
+//Converts timestamp to readable String
+function getDateStr(t){
+    var dateStr = 'Unknown'
+    if (t){
+        var d = new Date(t)
+        dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+    }
+    return dateStr
+}
 
 // Converts timestamp to readable String
 function getDateStr(t) {
