@@ -70,6 +70,7 @@ var genderType = ['♂', '♀', '⚲']
 var unownForm = ['unset', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '!', '?']
 
 
+
 /*
   text place holders:
   <pkm> - pokemon name
@@ -401,7 +402,7 @@ function openMapDirections(lat, lng) { // eslint-disable-line no-unused-vars
 function getDateStr(t) {
     var dateStr = 'Unknown'
     if (t) {
-        dateStr = moment(t).format("YYYY-MM-DD HH:MM:SS")
+        dateStr = moment(t).format('YYYY-MM-DD HH:MM:SS')
     }
     return dateStr
 }
