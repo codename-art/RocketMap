@@ -398,6 +398,9 @@ function openMapDirections(lat, lng) { // eslint-disable-line no-unused-vars
     var url = 'https://www.google.com/maps/?daddr=' + lat + ',' + lng
     window.open(url, '_blank')
 }
+/*eslint no-undef: "error"*/
+/*eslint-env browser*/
+
 // Converts timestamp to readable String
 function getDateStr(t) {
     var dateStr = 'Unknown'
