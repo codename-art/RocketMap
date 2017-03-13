@@ -401,8 +401,7 @@ function openMapDirections(lat, lng) { // eslint-disable-line no-unused-vars
 function getDateStr(t) {
     var dateStr = 'Unknown'
     if (t) {
-        var d = new Date(t)
-        dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+        dateStr = moment(t).format("YYYY-MM-DD HH:MM:SS")
     }
     return dateStr
 }
