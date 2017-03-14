@@ -28,8 +28,7 @@
     "grunt-unused": "latest",
     "grunt-usemin": "latest",
     "grunt-newer": "^1.2.0",
-    "jit-grunt": "^0.10.0",
-    "moment":"latest"
+    "jit-grunt": "^0.10.0"
   },
   "scripts": {
     "postinstall": "grunt build",
