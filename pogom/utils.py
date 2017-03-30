@@ -291,15 +291,15 @@ def get_args():
                               'duration.'), type=int, default=30)
     parser.add_argument('--dump-spawnpoints',
                         help=('Dump the spawnpoints from the db to json ' +
-                              '(only for use with -ss).'),
+                              '(only for use with -ss with file).'),
                         action='store_true', default=False)
     parser.add_argument('--dump-gyms',
                         help=('Dump the gyms from the db to json ' +
-                              '(only for use with -fs).'),
+                              '(only for use with -fs with file).'),
                         action='store_true', default=False)
     parser.add_argument('--dump-pokestops',
                         help=('Dump the pokestops from the db to json ' +
-                              '(only for use with -fs).'),
+                              '(only for use with -fs with file).'),
                         action='store_true', default=False)
     parser.add_argument('-pd', '--purge-data',
                         help=('Clear Pokemon from database this many hours ' +
