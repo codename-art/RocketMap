@@ -321,8 +321,8 @@ def main():
                 log.info('Saving spawn points to %s', args.spawnpoint_scanning)
                 spawns = Pokemon.get_spawnpoints_in_hex(
                     position, args.step_limit)
-                file.write(json.dumps(spawns, sort_keys=True,
-                    indent=4, separators=(',', ': ')))
+                file.write(json.dumps(
+                    spawns, sort_keys=True, indent=4, separators=(',', ': ')))
                 log.info('Finished exporting spawn points')
 
         if args.fort_scanning:
@@ -332,16 +332,18 @@ def main():
                         log.info('Saving gyms to %s', args.fort_scanning)
                         gyms = Gym.get_gyms_in_hex(
                             position, args.step_limit)
-                        file.write(json.dumps(gyms, sort_keys=True,
-                            indent=4, separators=(',', ': ')))
+                        file.write(json.dumps(
+                            gyms, sort_keys=True, indent=4,
+                            separators=(',', ': ')))
                         log.info('Finished exporting gyms')
                 if args.dump_pokestops:
                     with open(args.fort_scanning, 'w+') as file:
                         log.info('Saving pokestops to %s', args.fort_scanning)
                         pokestops = Pokestop.get_stops_in_hex(
                             position, args.step_limit)
-                        file.write(json.dumps(pokestops, sort_keys=True,
-                            indent=4, separators=(',', ': ')))
+                        file.write(json.dumps(
+                            pokestops, sort_keys=True, indent=4,
+                            separators=(',', ': ')))
                         log.info('Finished exporting Pokestops')
             else:
                 log.warning('Output file must be provided for a dump.')
