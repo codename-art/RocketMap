@@ -1926,8 +1926,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
             scan_loc = ScannedLocation.get_by_loc(step_location)
             scan_loc['radius'] = 450 if args.no_pokemon else 70
             ScannedLocation.update_band(scan_loc)
-            db_update_queue.put((ScannedLocation,
-                {0: scan_loc}))
+            db_update_queue.put((ScannedLocation, {0: scan_loc}))
 
             return {
                 'count': 0,
