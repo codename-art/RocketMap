@@ -569,7 +569,9 @@ class Pokestop(BaseModel):
 
         for pokestop in s:
             if geopy.distance.distance(
-                    center, (pokestop['lat'], pokestop['lng'])).meters <= step_distance:
+                    center,
+                    ((pokestop['lat'], pokestop['lng'])).meters <=
+                    step_distance):
                 filtered.append(pokestop)
 
         return filtered
