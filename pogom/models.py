@@ -428,8 +428,8 @@ class Pokemon(BaseModel):
         filtered = []
 
         for idx, sp in enumerate(s):
-            if geopy.distance.distance(
-                    center, (sp['lat'], sp['lng'])).meters <= step_distance:
+            if (geopy.distance.distance(
+                    center, (sp['lat'], sp['lng'])).meters <= step_distance):
                 filtered.append(s[idx])
 
         # At this point, 'time' is DISAPPEARANCE time, we're going to morph it
@@ -568,9 +568,9 @@ class Pokestop(BaseModel):
         filtered = []
 
         for pokestop in s:
-            if geopy.distance.distance(
+            if (geopy.distance.distance(
                     center,
-                    ((pokestop['lat'], pokestop['lng'])).meters <=
+                    (pokestop['lat'], pokestop['lng'])).meters <=
                     step_distance):
                 filtered.append(pokestop)
 
@@ -773,8 +773,8 @@ class Gym(BaseModel):
         filtered = []
 
         for gym in s:
-            if geopy.distance.distance(
-                    center, (gym['lat'], gym['lng'])).meters <= step_distance:
+            if (geopy.distance.distance(
+                    center, (gym['lat'], gym['lng'])).meters <= step_distance):
                 filtered.append(gym)
 
         return filtered
