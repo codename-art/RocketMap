@@ -1886,7 +1886,6 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
             forts_count += len(cell.get('forts', []))
 
 
-    abandon_loc = False
     if wild_pokemon:
         wild_pokemon_count = len(wild_pokemon)
     if forts:
