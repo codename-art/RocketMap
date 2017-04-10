@@ -2194,6 +2194,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                     # and previous commits.
                     wh_update_queue.put(('gym', {
                         'gym_id': b64encode(str(f['id'])),
+                        'gym_name': b64encode(str(f['name'])),
                         'team_id': f.get('owned_by_team', 0),
                         'guard_pokemon_id': f.get('guard_pokemon_id', 0),
                         'gym_points': f.get('gym_points', 0),
@@ -2205,6 +2206,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
 
                 gyms[f['id']] = {
                     'gym_id': f['id'],
+                    'gym_name': b64encode(str(f['name'])),
                     'team_id': f.get('owned_by_team', 0),
                     'guard_pokemon_id': f.get('guard_pokemon_id', 0),
                     'gym_points': f.get('gym_points', 0),
