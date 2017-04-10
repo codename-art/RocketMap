@@ -341,7 +341,7 @@ class HexSearchFort(HexSearch):
     # Extend the generate_locations function to remove locations with no forts.
     def _generate_locations(self):
 
-        fort_locations = {}
+        fort_locations = []
         # Attempt to load forts from file.
         if self.args.fort_scanning != 'nofile':
             log.debug('Loading forts from json file @ %s',
