@@ -427,6 +427,12 @@ def get_args():
                                  'specify file to log to.'),
                            nargs='?', const='nofile', default=False,
                            metavar='filename.log')
+    parser.add_argument('-saa', '--scout-account-auth', default="ptc",
+                        help='Scout auth')
+    parser.add_argument('-sau', '--scout-account-username', default=None,
+                        help='Scout username')
+    parser.add_argument('-sap', '--scout-account-password', default=None,
+                        help='Scout password')
     parser.set_defaults(DEBUG=False)
 
     args = parser.parse_args()
