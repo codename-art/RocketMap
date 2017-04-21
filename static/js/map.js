@@ -394,6 +394,46 @@ function openMapDirections(lat, lng) { // eslint-disable-line no-unused-vars
     window.open(url, '_blank')
 }
 
+function scout(encounterId) {
+    var encounterIdLong = atob(encounterId)
+    var infoEl = $("#scoutCP" + encounterIdLong)
+    var probsEl = $("#scoutProb" + encounterIdLong)
+    return $.ajax({
+        url: 'scout',
+        type: 'GET',
+        data: {
+            'encounter_id': encounterId
+        },
+        dataType: 'json',
+        cache: false,
+        beforeSend: function () {
+            infoEl.text("Scouting, please wait...")
+            infoEl.show()
+        },
+        error: function () {
+            infoEl.text("Error scouting, try again?")
+        },
+        success: function (data, textStatus, jqXHR) {
+            console.log(data)
+            if ('cp' in data) {
+                var iv = Math.round((data.individual_attack + data.individual_defense + data.individual_stamina) *100 / 45)
+                var pMove1 = (moves[data.move_1] !== undefined) ? i8ln(moves[data.move_1]['name']) : 'gen/unknown'
+                var pMove2 = (moves[data.move_2] !== undefined) ? i8ln(moves[data.move_2]['name']) : 'gen/unknown'
+                infoEl.html("<div>CP: " + data.cp + " | Pokemon Level: " + data.level + " | Scout Level: " + data.trainer_level + "</div>" +
+                    "<div>IV: " + data.individual_attack + "/" + data.individual_defense + "/" + data.individual_stamina + " " + iv + "%" + "</div>" +
+                    "<div>Moves: " + pMove1 + " / " + pMove2 + "</div>")
+            } else {
+                infoEl.text(data.msg)
+            }
+            if ('prob_red' in data) {
+                probsEl.text("Pokeball: " + data.prob_red + "% | Great Ball: " + data.prob_blue + "% | Ultra Ball: " + data.prob_yellow + "%")
+                probsEl.show()
+            }
+        }
+    })
+
+}
+
 // Converts timestamp to readable String
 function getDateStr(t) {
     var dateStr = 'Unknown'
@@ -459,6 +499,7 @@ function pokemonLabel(item) {
             </div>
             `
     }
+    var encounterIdLong = atob(encounterId)
     var contentstring = `
         <div>
             <b>${name}</b>`
@@ -481,11 +522,15 @@ function pokemonLabel(item) {
             Location: ${latitude.toFixed(6)}, ${longitude.toFixed(7)}
         </div>
             ${details}
+            <div id="scoutCP${encounterIdLong}" style="display:none;"></div>
+            <div id="scoutProb${encounterIdLong}" style="display:none;"></div>
         <div>
             <a href='javascript:excludePokemon(${id})'>Exclude</a>&nbsp;&nbsp
             <a href='javascript:notifyAboutPokemon(${id})'>Notify</a>&nbsp;&nbsp
             <a href='javascript:removePokemonMarker("${encounterId}")'>Remove</a>&nbsp;&nbsp
             <a href='javascript:void(0);' onclick='javascript:openMapDirections(${latitude},${longitude});' title='View in Maps'>Get directions</a>
+            &nbsp;&nbsp
+            <a href='javascript:void(0);' onclick='javascript:scout("${encounterId}");' title='Scout CP'>Scout</a>
         </div>`
     return contentstring
 }
