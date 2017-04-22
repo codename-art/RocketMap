@@ -707,6 +707,19 @@ def get_args():
             args.webhook_whitelist = frozenset(
                 [int(i) for i in args.webhook_whitelist])
 
+        if args.webhook_whitelist_file:
+            with open(args.webhook_whitelist_file) as f:
+                args.webhook_whitelist = [get_pokemon_id(name) for name in
+                                          f.read().splitlines()]
+        elif args.webhook_blacklist_file:
+            with open(args.webhook_blacklist_file) as f:
+                args.webhook_blacklist = [get_pokemon_id(name) for name in
+                                          f.read().splitlines()]
+        else:
+            args.webhook_blacklist = [int(i) for i in
+                                      args.webhook_blacklist]
+            args.webhook_whitelist = [int(i) for i in
+                                      args.webhook_whitelist]
         # Decide which scanning mode to use.
         if args.spawnpoint_scanning:
             args.scheduler = 'SpawnScan'
