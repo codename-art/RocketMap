@@ -301,6 +301,20 @@ def main():
         t.daemon = True
         t.start()
 
+    if args.scout:
+        # Processing proxies if set (load from file, check and overwrite old
+        # args.proxy with new working list)
+        args.proxy = check_proxies(args)
+
+        # Run periodical proxy refresh thread
+        if (args.proxy_file is not None) and (args.proxy_refresh > 0):
+            t = Thread(target=proxies_refresher,
+                       name='proxy-refresh', args=(args,))
+            t.daemon = True
+            t.start()
+        else:
+            log.info('Periodical proxies refresh disabled.')
+
     if not args.only_server:
 
         # Processing proxies if set (load from file, check and overwrite old
