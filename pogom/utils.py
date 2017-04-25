@@ -439,6 +439,8 @@ def get_args():
                                  'specify file to log to.'),
                            nargs='?', const='nofile', default=False,
                            metavar='filename.log')
+    parser.add_argument('-sco', '--scout', default="false",
+                        help='Enable CP and IV scouting')
     parser.add_argument('-saa', '--scout-account-auth', default="ptc",
                         help='Scout auth')
     parser.add_argument('-sau', '--scout-account-username', default=None,

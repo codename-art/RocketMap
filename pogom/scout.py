@@ -9,6 +9,7 @@ from pgoapi import PGoApi
 
 from pogom import schedulers
 from pogom.account import check_login, get_player_level
+from pogom.proxy import get_new_proxy, check_proxies
 from pogom.transform import jitter_location
 from pogom.utils import get_args, get_pokemon_name
 
@@ -45,6 +46,7 @@ threadStatus = {
     # 'proxy_display': proxy_display,
     # 'proxy_url': proxy_url,
 }
+
 
 
 def encounter_request(encounter_id, spawnpoint_id, latitude, longitude):
@@ -185,7 +187,11 @@ def perform_scout(p):
                 "username": args.scout_account_username,
                 "password": args.scout_account_password
             }
-            check_login(args, account, api, None, False)
+            proxy_num, proxy_url = get_new_proxy(args)
+            if proxy_url:
+                log.debug('Using proxy %s', proxy_url)
+                api.set_proxy({'http': proxy_url, 'https': proxy_url})
+            check_login(args, account, api, None, proxy_url)
 
             if args.hash_key:
                 key = key_scheduler.next()
