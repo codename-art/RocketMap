@@ -439,7 +439,7 @@ def get_args():
                                  'specify file to log to.'),
                            nargs='?', const='nofile', default=False,
                            metavar='filename.log')
-    parser.add_argument('-sco', '--scout', default="false",
+    parser.add_argument('-sco', '--scout', default=False, action='store_true',
                         help='Enable CP and IV scouting')
     parser.add_argument('-saa', '--scout-account-auth', default="ptc",
                         help='Scout auth')
@@ -450,6 +450,9 @@ def get_args():
     parser.add_argument('-scd', '--scout-cooldown-delay',
                         help='Number of seconds to wait before scout may be used again.',
                         type=int, default=60)
+    parser.add_argument('-saf', '--scout-accounts-file',
+                        default='', help='File containing a list of '
+                                         'accounts >= lvl 30 for scouting')
     parser.set_defaults(DEBUG=False)
 
     args = parser.parse_args()
