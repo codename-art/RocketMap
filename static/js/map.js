@@ -421,11 +421,11 @@ function scout(encounterId) {
         success: function (data, textStatus, jqXHR) {
             console.log(data)
             if ('cp' in data) {
-                var iv = Math.round((data.individual_attack + data.individual_defense + data.individual_stamina) *100 / 45)
+                var iv = getIv(data.individual_attack, data.individual_defense, data.individual_stamina)
                 var pMove1 = (moves[data.move_1] !== undefined) ? i8ln(moves[data.move_1]['name']) : 'gen/unknown'
                 var pMove2 = (moves[data.move_2] !== undefined) ? i8ln(moves[data.move_2]['name']) : 'gen/unknown'
                 infoEl.html("<div>CP: " + data.cp + " | Pokemon Level: " + data.level + " | Scout Level: " + data.trainer_level + "</div>" +
-                    "<div>IV: " + data.individual_attack + "/" + data.individual_defense + "/" + data.individual_stamina + " " + iv + "%" + "</div>" +
+                    "<div>IV: " + data.individual_attack + "/" + data.individual_defense + "/" + data.individual_stamina + " " + iv.toFixed(1) + "%" + "</div>" +
                     "<div>Moves: " + pMove1 + " / " + pMove2 + "</div>")
             } else {
                 infoEl.text(data.msg)
