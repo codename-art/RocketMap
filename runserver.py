@@ -18,6 +18,7 @@ from flask_cache_bust import init_cache_busting
 
 from pogom import config
 from pogom.app import Pogom
+from pogom.scout import scout_init
 from pogom.utils import get_args, now, extract_sprites
 from pogom.altitude import get_gmaps_altitude
 
@@ -273,18 +274,7 @@ def main():
         t.start()
 
     if args.scout:
-        # Processing proxies if set (load from file, check and overwrite old
-        # args.proxy with new working list)
-        args.proxy = check_proxies(args)
-
-        # Run periodical proxy refresh thread
-        if (args.proxy_file is not None) and (args.proxy_refresh > 0):
-            t = Thread(target=proxies_refresher,
-                       name='proxy-refresh', args=(args,))
-            t.daemon = True
-            t.start()
-        else:
-            log.info('Periodical proxies refresh disabled.')
+        scout_init()
 
     if not args.only_server:
 
