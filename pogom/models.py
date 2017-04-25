@@ -2964,3 +2964,9 @@ def database_migrate(db, old_ver):
 
     # Always log that we're done.
     log.info('Schema upgrade complete.')
+
+    if old_ver < 17:
+        migrate(
+            migrator.add_column('pokemon', 'form',
+                                SmallIntegerField(null=True))
+        )
