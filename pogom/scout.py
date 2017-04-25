@@ -25,7 +25,6 @@ key_scheduler = schedulers.KeyScheduler(args.hash_key)
 
 scoutLock = Lock()
 last_scout_timestamp = None
-scout_delay_seconds = 60
 encounter_cache = {}
 
 # Create a list for failed accounts.
@@ -167,8 +166,8 @@ def perform_scout(p):
         now = time.time()
         account = {}
         step_location = []
-        if last_scout_timestamp is not None and now < last_scout_timestamp + scout_delay_seconds:
-            wait_secs = last_scout_timestamp + scout_delay_seconds - now
+        if last_scout_timestamp is not None and now < last_scout_timestamp + args.scout_cooldown_delay:
+            wait_secs = last_scout_timestamp + args.scout_cooldown_delay - now
             log.info("Waiting {} more seconds before next scout use.".format(wait_secs))
             # time.sleep(wait_secs)
             request_result = {}

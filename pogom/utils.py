@@ -458,6 +458,9 @@ def get_args():
                         help='Scout username')
     parser.add_argument('-sap', '--scout-account-password', default=None,
                         help='Scout password')
+    parser.add_argument('-scd', '--scout-cooldown-delay',
+                        help='Number of seconds to wait before scout may be used again.',
+                        type=int, default=60)
     parser.set_defaults(DEBUG=False)
 
     args = parser.parse_args()

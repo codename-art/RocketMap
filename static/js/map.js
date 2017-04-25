@@ -415,11 +415,11 @@ function scout(encounterId) {
         success: function (data, textStatus, jqXHR) {
             console.log(data)
             if ('cp' in data) {
-                var iv = Math.round((data.individual_attack + data.individual_defense + data.individual_stamina) *100 / 45)
+                var iv = getIv(data.individual_attack, data.individual_defense, data.individual_stamina)
                 var pMove1 = (moves[data.move_1] !== undefined) ? i8ln(moves[data.move_1]['name']) : 'gen/unknown'
                 var pMove2 = (moves[data.move_2] !== undefined) ? i8ln(moves[data.move_2]['name']) : 'gen/unknown'
                 infoEl.html("<div>CP: " + data.cp + " | Pokemon Level: " + data.level + " | Scout Level: " + data.trainer_level + "</div>" +
-                    "<div>IV: " + data.individual_attack + "/" + data.individual_defense + "/" + data.individual_stamina + " " + iv + "%" + "</div>" +
+                    "<div>IV: " + data.individual_attack + "/" + data.individual_defense + "/" + data.individual_stamina + " " + iv.toFixed(1) + "%" + "</div>" +
                     "<div>Moves: " + pMove1 + " / " + pMove2 + "</div>")
             } else {
                 infoEl.text(data.msg)
@@ -442,45 +442,6 @@ function getDateStr(t) {
     return dateStr
 }
 
-function scout(encounterId) {
-    var encounterIdLong = atob(encounterId)
-    var infoEl = $("#scoutCP" + encounterIdLong)
-    var probsEl = $("#scoutProb" + encounterIdLong)
-    return $.ajax({
-        url: 'scout',
-        type: 'GET',
-        data: {
-            'encounter_id': encounterId
-        },
-        dataType: 'json',
-        cache: false,
-        beforeSend: function () {
-            infoEl.text("Scouting, please wait...")
-            infoEl.show()
-        },
-        error: function () {
-            infoEl.text("Error scouting, try again?")
-        },
-        success: function (data, textStatus, jqXHR) {
-            console.log(data)
-            if ('cp' in data) {
-                var iv = Math.round((data.individual_attack + data.individual_defense + data.individual_stamina) *100 / 45)
-                var pMove1 = (moves[data.move_1] !== undefined) ? i8ln(moves[data.move_1]['name']) : 'gen/unknown'
-                var pMove2 = (moves[data.move_2] !== undefined) ? i8ln(moves[data.move_2]['name']) : 'gen/unknown'
-                infoEl.html("<div>CP: " + data.cp + " | Pokemon Level: " + data.level + " | Scout Level: " + data.trainer_level + "</div>" +
-                    "<div>IV: " + data.individual_attack + "/" + data.individual_defense + "/" + data.individual_stamina + " " + iv + "%" + "</div>" +
-                    "<div>Moves: " + pMove1 + " / " + pMove2 + "</div>")
-            } else {
-                infoEl.text(data.msg)
-            }
-            if ('prob_red' in data) {
-                probsEl.text("Pokeball: " + data.prob_red + "% | Great Ball: " + data.prob_blue + "% | Ultra Ball: " + data.prob_yellow + "%")
-                probsEl.show()
-            }
-        }
-    })
-
-}
 
 function pokemonLabel(name, rarity, types, disappearTime, id, latitude, longitude, encounterId, atk, def, sta, move1, move2, weight, height, gender) {
     var disappearDate = new Date(disappearTime)
