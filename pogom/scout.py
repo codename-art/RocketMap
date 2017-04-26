@@ -238,6 +238,8 @@ def perform_scout(p):
                 api = PGoApi()
 
             api.set_position(*step_location)
+
+            proxy_url = False
             if args.proxy is not None and len(args.proxy) > 0:
                 proxy_num, proxy_url = get_new_proxy(args)
                 if proxy_url:
