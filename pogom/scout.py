@@ -238,10 +238,11 @@ def perform_scout(p):
                 api = PGoApi()
 
             api.set_position(*step_location)
-            proxy_num, proxy_url = get_new_proxy(args)
-            if proxy_url:
-                log.debug('Using proxy %s', proxy_url)
-                api.set_proxy({'http': proxy_url, 'https': proxy_url})
+            if len(args.proxy) > 0:
+                proxy_num, proxy_url = get_new_proxy(args)
+                if proxy_url:
+                    log.debug('Using proxy %s', proxy_url)
+                    api.set_proxy({'http': proxy_url, 'https': proxy_url})
 
             try:
                 check_login(args, account, api, None, proxy_url)
