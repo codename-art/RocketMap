@@ -2956,5 +2956,11 @@ def database_migrate(db, old_ver):
                                 SmallIntegerField(null=True))
         )
 
+    if old_ver < 18:
+        migrate(
+            migrator.add_column('pokemon', 'cp',
+                                SmallIntegerField(null=True))
+        )
+
     # Always log that we're done.
     log.info('Schema upgrade complete.')
