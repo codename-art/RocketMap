@@ -2982,7 +2982,7 @@ def database_migrate(db, old_ver):
             migrator.add_column('pokemon', 'cp',
                                 SmallIntegerField(null=True))
         )
-    
+
     if old_ver < 19:
         migrate(
             migrator.add_column(
