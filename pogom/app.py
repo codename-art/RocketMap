@@ -18,7 +18,7 @@ from bisect import bisect_left
 
 from . import config
 from .models import (Pokemon, Gym, Pokestop, ScannedLocation,
-                     MainWorker, WorkerStatus, Token)
+                     MainWorker, WorkerStatus, Token, HashKeys)
 from .utils import now, dottedQuadToNum, get_blacklist
 log = logging.getLogger(__name__)
 compress = Compress()
@@ -573,6 +573,7 @@ class Pogom(Flask):
             d['login'] = 'ok'
             d['main_workers'] = MainWorker.get_all()
             d['workers'] = WorkerStatus.get_all()
+            d['hashkeys'] = HashKeys.get_obfuscated_keys()
         else:
             d['login'] = 'failed'
         return jsonify(d)
