@@ -1157,7 +1157,7 @@ class SchedulerFactory():
 # server keys.
 class KeyScheduler(object):
 
-    def __init__(self, keys, db_updates_queue):
+    def __init__(self, keys, db_updates_queue=None):
         self.keys = {}
         for key in keys:
             self.keys[key] = {
@@ -1173,7 +1173,9 @@ class KeyScheduler(object):
         hashkeys = self.keys
         for key in hashkeys:
             hashkeys[key]['key'] = key
-        db_updates_queue.put((HashKeys, hashkeys))
+
+        if db_updates_queue is not None:
+            db_updates_queue.put((HashKeys, hashkeys))
 
     def keys(self):
         return self.keys
