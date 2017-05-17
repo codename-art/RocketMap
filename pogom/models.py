@@ -2567,7 +2567,8 @@ def clean_db_loop(args):
                          .delete()
                          .where((Pokemon.disappear_time <
                                  (datetime.utcnow() -
-                                  timedelta(hours=args.purge_data)))))
+                                  timedelta(hours=args.purge_data))))
+                         .where(Pokemon.pokemon_id.in_([16,19,177,161,198,163,21,81,183,98,194,41,46,69,43,187,220,187,190,167])))
                 rows = query.execute()
                 end = datetime.utcnow()
                 diff = end - start
