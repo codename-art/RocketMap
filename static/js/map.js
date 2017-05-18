@@ -72,6 +72,7 @@ var unownForm = ['unset', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K',
 
 
 
+
 /*
   text place holders:
   <pkm> - pokemon name
@@ -399,15 +400,6 @@ function getTypeSpan(type) {
 function openMapDirections(lat, lng) { // eslint-disable-line no-unused-vars
     var url = 'https://www.google.com/maps/?daddr=' + lat + ',' + lng
     window.open(url, '_blank')
-}
-
-// Converts timestamp to readable String
-function getDateStr(t) {
-    var dateStr = 'Unknown'
-    if (t) {
-        dateStr = moment(t).format('YYYY-MM-DD HH:mm:ss')
-    }
-    return dateStr
 }
 
 // Converts timestamp to readable String
@@ -2120,6 +2112,14 @@ $(function () {
 
     $selectMaxGymLevel.on('change', function () {
         Store.set('maxGymLevel', this.value)
+        lastgyms = false
+        updateMap()
+    })
+
+    $selectTrainerGymsOnly = $('#trainer-gyms-only')
+
+    $selectTrainerGymsOnly.on('change', function () {
+        Store.set('showTrainerGymsOnly', this.value)
         lastgyms = false
         updateMap()
     })

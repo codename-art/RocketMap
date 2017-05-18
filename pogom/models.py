@@ -2246,6 +2246,8 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                         })
                     wh_update_queue.put(('pokemon', wh_poke))
 
+        del wild_pokemon
+
     if forts and (config['parse_pokestops'] or config['parse_gyms']):
         if config['parse_pokestops']:
             stop_ids = [f['id'] for f in forts if f.get('type') == 1]
@@ -2603,6 +2605,8 @@ def db_updater(args, q, db):
                           len(data),
                           q.qsize(),
                           default_timer() - last_upsert)
+                del model
+                del data
 
                 # Helping out the GC.
                 del model
