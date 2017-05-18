@@ -886,6 +886,10 @@ var StoreOptions = {
         default: 0,
         type: StoreTypes.Number
     },
+    'showTrainerGymsOnly': {
+        default: '',
+        type: StoreTypes.String
+    },
     'minGymLevel': {
         default: 0,
         type: StoreTypes.Number
