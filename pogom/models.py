@@ -1948,6 +1948,8 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
 
     del map_dict['responses']['GET_MAP_OBJECTS']
 
+    abandon_loc = False
+
     # If there are no wild or nearby Pokemon . . .
     if not wild_pokemon and not nearby_pokemon:
         # . . . and there are no gyms/pokestops then it's unusable/bad.
