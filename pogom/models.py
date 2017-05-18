@@ -3041,8 +3041,8 @@ def database_migrate(db, old_ver):
 
     if old_ver < 20:
         migrate(
-            migrator.add_column(
-                'scannedlocation', 'radius', SmallIntegerField(default=70))
+            migrator.add_column('pokemon', 'form',
+                                SmallIntegerField(null=True))
         )
 
     # Always log that we're done.
