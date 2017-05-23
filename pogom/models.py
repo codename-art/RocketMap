@@ -42,7 +42,7 @@ args = get_args()
 flaskDb = FlaskDB()
 cache = TTLCache(maxsize=100, ttl=60 * 5)
 
-db_schema_version = 19
+db_schema_version = 20
 
 
 class MyRetryDB(RetryOperationalError, PooledMySQLDatabase):
@@ -1124,6 +1124,7 @@ class WorkerStatus(BaseModel):
     fail = IntegerField()
     no_items = IntegerField()
     skip = IntegerField()
+    missed = IntegerField()
     captcha = IntegerField()
     last_modified = DateTimeField(index=True)
     message = Utf8mb4CharField(max_length=191)
@@ -1140,6 +1141,7 @@ class WorkerStatus(BaseModel):
                 'fail': status['fail'],
                 'no_items': status['noitems'],
                 'skip': status['skip'],
+                'missed': status['missed'],
                 'captcha': status['captcha'],
                 'last_modified': datetime.utcnow(),
                 'message': status['message'],
@@ -2290,6 +2292,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
             if clock_between(endpoints[0], now_secs, endpoints[1]):
                 sp['missed_count'] += 1
                 spawn_points[sp['id']] = sp
+                status['missed'] += 1
                 log.warning('%s kind spawnpoint %s has no Pokemon %d times'
                             ' in a row.',
                             sp['kind'], sp['id'], sp['missed_count'])
@@ -2939,6 +2942,10 @@ def database_migrate(db, old_ver):
             migrator.add_column('pokemon', 'cp_multiplier',
                                 FloatField(null=True))
         )
-
+    if old_ver < 20:
+        migrate(
+            migrator.add_column('workerstatus', 'missed',
+                                IntegerField(null=True))
+        )
     # Always log that we're done.
     log.info('Schema upgrade complete.')

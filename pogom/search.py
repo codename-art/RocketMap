@@ -189,14 +189,15 @@ def status_printer(threadStatus, search_items_queue_array, db_updates_queue,
                             str(threadStatus[item]['proxy_display'])))
 
             # How pretty.
-            status = '{:10} | {:5} | {:' + str(userlen) + '} | {:' + str(
-                proxylen) + '} | {:7} | {:6} | {:5} | {:7} | {:8} | {:10}'
+            status = ('{:10} | {:5} | {:' + str(userlen) + '} | {:' + str(
+                proxylen) + '} | {:7} | {:6} | {:5} | {:7} | {:6} | {:8} ' +
+                '| {:10}')
 
             # Print the worker status.
             status_text.append(status.format('Worker ID', 'Start', 'User',
                                              'Proxy', 'Success', 'Failed',
-                                             'Empty', 'Skipped', 'Captchas',
-                                             'Message'))
+                                             'Empty', 'Skipped', 'Missed',
+                                             'Captchas', 'Message'))
             for item in sorted(threadStatus):
                 if(threadStatus[item]['type'] == 'Worker'):
                     current_line += 1
@@ -218,6 +219,7 @@ def status_printer(threadStatus, search_items_queue_array, db_updates_queue,
                         threadStatus[item]['fail'],
                         threadStatus[item]['noitems'],
                         threadStatus[item]['skip'],
+                        threadStatus[item]['missed'],
                         threadStatus[item]['captcha'],
                         threadStatus[item]['message']))
 
@@ -465,6 +467,7 @@ def search_overseer_thread(args, new_location_queue, pause_bit, heartb,
             'fail': 0,
             'noitems': 0,
             'skip': 0,
+            'missed': 0,
             'captcha': 0,
             'username': '',
             'proxy_display': proxy_display,
