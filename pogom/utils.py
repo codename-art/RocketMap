@@ -185,6 +185,12 @@ def get_args():
                         help=('Number of times to retry the login before ' +
                               'refreshing a thread.'),
                         type=int, default=3)
+    parser.add_argument('-ms', '--max-missed',
+                        help=('Maximum number of missed pokemon ' +
+                              'before an account will go into a ' +
+                              'sleep for -ari/--account-rest-interval ' +
+                              'seconds.'),
+                        type=int, default=5)
     parser.add_argument('-mf', '--max-failures',
                         help=('Maximum number of failures to parse ' +
                               'locations before an account will go into a ' +
@@ -456,6 +462,9 @@ def get_args():
     parser.set_defaults(DEBUG=False)
 
     args = parser.parse_args()
+
+    if args.complete_tutorial:
+        args.good_file = open("good.txt", "a")
 
     if args.only_server:
         if args.location is None:

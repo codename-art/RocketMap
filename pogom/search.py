@@ -850,6 +850,21 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                     # recreated.
                     break
 
+
+                if status['missed'] > args.max_missed:
+                    status['message'] = (
+                        'Account {} miss pokemon for more than {} ' +
+                        'scans; possibly shadowbanned. Switching ' +
+                        'accounts...').format(account['username'],
+                                              args.max_missed)
+                    log.warning(status['message'])
+                    account_failures.append({'account': account,
+                                             'last_fail_time': now(),
+                                             'reason': 'missed pokemon'})
+                    # Exit this loop to get a new account and have the API
+                    # recreated.
+                    break
+
                 # If used proxy disappears from "live list" after background
                 # checking - switch account but do not freeze it (it's not an
                 # account failure).
@@ -954,6 +969,8 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                         else:
                             log.info('Account %s already completed tutorial.',
                                      account['username'])
+                        args.good_file.write("ptc,"+account['username']+",PtcGenerator#1\n")
+                        args.good_file.flush()
 
                 # Putting this message after the check_login so the messages
                 # aren't out of order.
