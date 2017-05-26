@@ -539,4 +539,5 @@ class AccountSet(object):
         # TODO: Instead of returning False, return the amount of min. seconds
         # the instance needs to wait until the first account becomes available,
         # so it doesn't need to keep asking if we know we need to wait.
+        log.error('Exception while spinning Pokestop: %s.', repr(e))
         return False
