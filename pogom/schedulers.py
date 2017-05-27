@@ -1174,8 +1174,8 @@ class KeyScheduler(object):
         for key in hashkeys:
             hashkeys[key]['key'] = key
 
-        if db_updates_queue is not None:
-            db_updates_queue.put((HashKeys, hashkeys))
+        # if db_updates_queue is not None:
+        #     db_updates_queue.put((HashKeys, hashkeys))
 
     def keys(self):
         return self.keys
