@@ -425,92 +425,8 @@ class AccountSet(object):
                 if account.get('captcha', False):
                     continue
 
-                # Check if we're below speed limit for account.
-                last_scanned = account.get('last_scanned', False)
-
-                if last_scanned:
-                    seconds_passed = now - last_scanned
-                    old_coords = account.get('last_coords', coords_to_scan)
-
-                    distance_km = equi_rect_distance(
-                        old_coords,
-                        coords_to_scan)
-                    cooldown_time_sec = distance_km / max_speed_kmph * 3600
-
-                    # Not enough time has passed for this one.
-                    if seconds_passed < cooldown_time_sec:
-                        continue
-
-                # We've found an account that's ready.
-                account['last_scanned'] = now
-                account['last_coords'] = coords_to_scan
-                account['in_use'] = True
-
-                return account
-
-        # TODO: Instead of returning False, return the amount of min. seconds
-        # the instance needs to wait until the first account becomes available,
-        # so it doesn't need to keep asking if we know we need to wait.
-        log.error('Exception while spinning Pokestop: %s.', repr(e))
-        return False
-
-
-# The AccountSet returns a scheduler that cycles through different
-# sets of accounts (e.g. L30). Each set is defined at runtime, and is
-# (currently) used to separate regular accounts from L30 accounts.
-# TODO: Migrate the old account Queue to a real AccountScheduler, preferably
-# handled globally via database instead of per instance.
-# TODO: Accounts in the AccountSet are exempt from things like the
-# account recycler thread. We could've hardcoded support into it, but that
-# would have added to the amount of ugly code. Instead, we keep it as is
-# until we have a proper account manager.
-class AccountSet(object):
-
-    def __init__(self, kph):
-        self.sets = {}
-
-        # Scanning limits.
-        self.kph = kph
-
-        # Thread safety.
-        self.next_lock = Lock()
-
-    # Set manipulation.
-    def create_set(self, name, values=[]):
-        if name in self.sets:
-            raise Exception('Account set ' + name + ' is being created twice.')
-
-        self.sets[name] = values
-
-    # Release an account back to the pool after it was used.
-    def release(self, account):
-        if 'in_use' not in account:
-            log.error('Released account %s back to the AccountSet,'
-                      + " but it wasn't locked.",
-                      account['username'])
-        else:
-            account['in_use'] = False
-
-    # Get next account that is ready to be used for scanning.
-    def next(self, set_name, coords_to_scan):
-        # Yay for thread safety.
-        with self.next_lock:
-            # Readability.
-            account_set = self.sets[set_name]
-
-            # Loop all accounts for a good one.
-            now = default_timer()
-            max_speed_kmph = self.kph
-
-            for i in range(len(account_set)):
-                account = account_set[i]
-
-                # Make sure it's not in use.
-                if account.get('in_use', False):
-                    continue
-
                 # Make sure it's not captcha'd.
-                if account.get('captcha', False):
+                if account.get('missed', 0) > 5:
                     continue
 
                 # Check if we're below speed limit for account.
@@ -539,5 +455,4 @@ class AccountSet(object):
         # TODO: Instead of returning False, return the amount of min. seconds
         # the instance needs to wait until the first account becomes available,
         # so it doesn't need to keep asking if we know we need to wait.
-        log.error('Exception while spinning Pokestop: %s.', repr(e))
         return False

@@ -2044,6 +2044,12 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                                                 + ' is only level '
                                                 + encounter_level + '.')
 
+                        if 'wild_pokemon' not in encounter_result['responses']['ENCOUNTER']:
+                            # possible shadowban
+                            hlvl_account['missed'] += 1
+                            if using_accountset:
+                                account_sets.release(hlvl_account)
+
                         # We're done with the encounter. If it's from an
                         # AccountSet, release account back to the pool.
                         if using_accountset:
@@ -2055,6 +2061,8 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                     else:
                         # Something happened. Clean up.
 
+                        # possible shadowban
+                        hlvl_account['missed'] += 1
                         # We're done with the encounter. If it's from an
                         # AccountSet, release account back to the pool.
                         if using_accountset:
@@ -2100,7 +2108,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                 cp = pokemon_info.get('cp', None)
 
                 # Logging: let the user know we succeeded.
-                log.debug('Encounter for Pokémon ID %s'
+                log.info('Encounter for Pokémon ID %s'
                           + ' at %s, %s successful: '
                           + ' %s/%s/%s, %s CP.',
                           pokemon_id,

@@ -299,9 +299,6 @@ def main():
     config['ROOT_PATH'] = app.root_path
     config['GMAPS_KEY'] = args.gmaps_key
 
-    if args.scout:
-        scout_init()
-
     if not args.only_server:
 
         # Abort if we don't have a hash key set
