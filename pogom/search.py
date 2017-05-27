@@ -45,7 +45,7 @@ from pgoapi.hash_server import (HashServer, BadHashRequestException,
                                 HashingOfflineException)
 from .models import (parse_map, GymDetails, parse_gyms, MainWorker,
                      WorkerStatus, HashKeys)
-from .utils import now, clear_dict_response
+from .utils import now, clear_dict_response, get_args
 from .transform import get_new_coords, jitter_location
 from .account import (setup_api, check_login, get_tutorial_state,
                       complete_tutorial, AccountSet)
@@ -93,6 +93,9 @@ def switch_status_printer(display_type, current_page, mainlog,
         elif command.lower() == 'h':
             mainlog.handlers[0].setLevel(logging.CRITICAL)
             display_type[0] = 'hashstatus'
+        elif command.lower() == 'p':
+            mainlog.handlers[0].setLevel(logging.CRITICAL)
+            display_type[0] = 'goodaccs'
 
 
 # Thread to print out the status of each worker.
@@ -266,6 +269,16 @@ def status_printer(threadStatus, search_items_queue_array, db_updates_queue,
                         key_instance['remaining'],
                         key_instance['maximum'],
                         key_instance['peak']))
+
+        elif display_type[0] == 'goodaccs':
+            status_text.append(
+                '----------------------------------------------------------')
+            status_text.append('Good accounts:')
+            status_text.append(
+                '----------------------------------------------------------')
+            print_good_accounts(threadStatus, account_queue)
+            status_text.append('Done')
+            display_type[0] = 'workers'
 
         # Print the status_text for the current screen.
         status_text.append((
@@ -1390,3 +1403,25 @@ def get_api_version(args):
     except Exception as e:
         log.warning('error on API check: %s', repr(e))
         return False
+
+
+def print_good_accounts(threadStatus, account_queue):
+    print "Dump good accounts"
+    args = get_args()
+
+    for item in threadStatus:
+        if threadStatus[item]['type'] == 'Worker':
+            s = "ptc," + threadStatus[item]['username'] + ",PtcGenerator#1\n"
+            log.info(s)
+            args.good_file.write(s)
+
+    while not account_queue.empty():
+        try:
+            get = account_queue.get_nowait()
+            s = "ptc," + get['username'] + ","+get['password']+"\n"
+            log.info(s)
+            args.good_file.write(s)
+        except Exception as e:
+            print 'e:' + e.message
+    args.good_file.flush()
+    return

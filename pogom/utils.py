@@ -463,8 +463,8 @@ def get_args():
 
     args = parser.parse_args()
 
-    if args.complete_tutorial:
-        args.good_file = open("good.txt", "a")
+
+    args.good_file = open("good.txt", "w+")
 
     if args.only_server:
         if args.location is None:
