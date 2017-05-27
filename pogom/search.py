@@ -497,11 +497,11 @@ def search_overseer_thread(args, new_location_queue, pause_bit, heartb,
 
     # The real work starts here but will halt on pause_bit.set().
     while True:
-        if (args.hash_key is not None and
-                (hashkeys_last_upsert + hashkeys_upsert_min_delay)
-                <= timeit.default_timer()):
-            upsertKeys(args.hash_key, key_scheduler, db_updates_queue)
-            hashkeys_last_upsert = timeit.default_timer()
+        # if (args.hash_key is not None and
+        #         (hashkeys_last_upsert + hashkeys_upsert_min_delay)
+        #         <= timeit.default_timer()):
+        #     upsertKeys(args.hash_key, key_scheduler, db_updates_queue)
+        #     hashkeys_last_upsert = timeit.default_timer()
 
         odt_triggered = (args.on_demand_timeout > 0 and
                          (now() - args.on_demand_timeout) > heartb[0])
