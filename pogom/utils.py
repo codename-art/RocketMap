@@ -191,6 +191,10 @@ def get_args():
                               'sleep for -ari/--account-rest-interval ' +
                               'seconds.'),
                         type=int, default=5)
+    parser.add_argument('-rlf', '--rares-list-file',
+                        default='', help='File containing a list of '
+                                         'Pokemon IDs to encounter for'
+                                         ' IV/CP scanning.')
     parser.add_argument('-mf', '--max-failures',
                         help=('Maximum number of failures to parse ' +
                               'locations before an account will go into a ' +
@@ -691,6 +695,12 @@ def get_args():
         if args.enc_whitelist_file:
             with open(args.enc_whitelist_file) as f:
                 args.enc_whitelist = frozenset([int(l.strip()) for l in f])
+
+        # shadow ban check scanning.
+        args.rares_list = []
+        if args.rares_list_file:
+            with open(args.rares_list_file) as f:
+                args.rares_list = frozenset([int(l.strip()) for l in f])
 
         # Make max workers equal number of accounts if unspecified, and disable
         # account switching.

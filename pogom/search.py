@@ -193,14 +193,14 @@ def status_printer(threadStatus, search_items_queue_array, db_updates_queue,
 
             # How pretty.
             status = ('{:10} | {:5} | {:' + str(userlen) + '} | {:' + str(
-                proxylen) + '} | {:7} | {:6} | {:5} | {:7} | {:6} | {:8} ' +
+                proxylen) + '} | {:7} | {:6} | {:5} | {:7} | {:6} | {:6} | {:8} ' +
                 '| {:10}')
 
             # Print the worker status.
             status_text.append(status.format('Worker ID', 'Start', 'User',
                                              'Proxy', 'Success', 'Failed',
                                              'Empty', 'Skipped', 'Missed',
-                                             'Captchas', 'Message'))
+                                             'Rares', 'Captchas', 'Message'))
             for item in sorted(threadStatus):
                 if(threadStatus[item]['type'] == 'Worker'):
                     current_line += 1
@@ -223,6 +223,7 @@ def status_printer(threadStatus, search_items_queue_array, db_updates_queue,
                         threadStatus[item]['noitems'],
                         threadStatus[item]['skip'],
                         threadStatus[item]['missed'],
+                        threadStatus[item]['rares'],
                         threadStatus[item]['captcha'],
                         threadStatus[item]['message']))
 
@@ -481,6 +482,7 @@ def search_overseer_thread(args, new_location_queue, pause_bit, heartb,
             'noitems': 0,
             'skip': 0,
             'missed': 0,
+            'rares': 0,
             'captcha': 0,
             'username': '',
             'proxy_display': proxy_display,
@@ -809,6 +811,7 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
             status['noitems'] = 0
             status['skip'] = 0
             status['missed'] = 0
+            status['rares'] = 0
             status['captcha'] = 0
 
             stagger_thread(args)
@@ -904,6 +907,8 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                         account_failures.append({'account': account,
                                                  'last_fail_time': now(),
                                                  'reason': 'rest interval'})
+                        args.good_file.write("ptc,"+account['username']+",PtcGenerator#1\n")
+                        args.good_file.flush()
                         break
 
                 # Grab the next thing to search (when available).
@@ -982,8 +987,6 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                         else:
                             log.info('Account %s already completed tutorial.',
                                      account['username'])
-                        args.good_file.write("ptc,"+account['username']+",PtcGenerator#1\n")
-                        args.good_file.flush()
 
                 # Putting this message after the check_login so the messages
                 # aren't out of order.

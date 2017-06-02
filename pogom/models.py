@@ -1125,6 +1125,7 @@ class WorkerStatus(BaseModel):
     no_items = IntegerField()
     skip = IntegerField()
     missed = IntegerField()
+    rares = IntegerField()
     captcha = IntegerField()
     last_modified = DateTimeField(index=True)
     message = Utf8mb4CharField(max_length=191)
@@ -1142,6 +1143,7 @@ class WorkerStatus(BaseModel):
                 'no_items': status['noitems'],
                 'skip': status['skip'],
                 'missed': status['missed'],
+                'rares': status['rares'],
                 'captcha': status['captcha'],
                 'last_modified': datetime.utcnow(),
                 'message': status['message'],
@@ -2091,6 +2093,10 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                 'form': None
             }
 
+            if pokemon_id in args.rares_list:
+                status['missed'] = 0
+                status['rares'] += 1
+
             # Check for Unown's alphabetic character.
             if pokemon_id == 201:
                 pokemon[p['encounter_id']]['form'] = p['pokemon_data'][
@@ -2958,7 +2964,10 @@ def database_migrate(db, old_ver):
     if old_ver < 20:
         migrate(
             migrator.add_column('workerstatus', 'missed',
-                                IntegerField(null=True))
+                                IntegerField(null=True)),
+
+            migrator.add_column('workerstatus', 'rares',
+                            IntegerField(null=True))
         )
     # Always log that we're done.
     log.info('Schema upgrade complete.')
