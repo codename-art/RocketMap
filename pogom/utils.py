@@ -902,12 +902,6 @@ def get_blacklist():
 
 
 def generate_device_info(username):
-    def gen_udid():
-        s = ''
-        for i in range(59):
-            s += chr(local_random.randint(48, 122))
-        return hashlib.sha1(s).hexdigest()
-
     device_info = {
         'device_brand': 'Apple',
         'device_model': 'iPhone',
@@ -939,16 +933,19 @@ def generate_device_info(username):
     IOS10_VERSIONS = ('10.1.1', '10.2.1', '10.3.2')
 
     # Make random numbers reproducible.
+    args = get_args()
     local_random = random.Random()
-    local_random.seed(reduce(lambda x, y: x + y, map(ord, username)))
+    seed = int(hashlib.sha1(username).hexdigest(), 16)
+    seed += args.random_seed_salt
+    local_random.seed(seed)
 
     device = local_random.choice(devices)
     device_info['device_model_boot'] = device
     device_info['hardware_model'] = IPHONES[device]
-    device_info['device_id'] = gen_udid()
+    device_info['device_id'] = '%032x' % local_random.randrange(16 ** 32)
     device_info['firmware_type'] = local_random.choice(IOS10_VERSIONS)
 
-    log.info("Account {} is using an {} on iOS {} with UDID {}".format(
+    log.info("Account {} is using an {} on iOS {} with device ID {}".format(
         username, device, device_info['firmware_type'],
         device_info['device_id']))
 
