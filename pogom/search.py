@@ -803,6 +803,7 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                 account['username'], scheduler.scan_location))
             status['message'] = 'Switching to account {}.'.format(
                 account['username'])
+            status['account'] = account
             log.info(status['message'])
 
             # New lease of life right here.

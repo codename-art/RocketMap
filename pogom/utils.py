@@ -936,7 +936,7 @@ def generate_device_info(username):
     args = get_args()
     local_random = random.Random()
     seed = int(hashlib.sha1(username).hexdigest(), 16)
-    seed += args.random_seed_salt
+    seed += 181
     local_random.seed(seed)
 
     device = local_random.choice(devices)
