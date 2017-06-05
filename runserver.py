@@ -252,11 +252,19 @@ def main():
     # DB Updates
     db_updates_queue = Queue()
 
+
+    # WH updates queue & WH unique key LFU caches.
+    # The LFU caches will stop the server from resending the same data an
+    # infinite number of times. The caches will be instantiated in the
+    # webhook's startup code.
+    wh_updates_queue = Queue()
+    wh_key_cache = {}
+
     # Thread(s) to process database updates.
     for i in range(args.db_threads):
         log.debug('Starting db-updater worker thread %d', i)
         t = Thread(target=db_updater, name='db-updater-{}'.format(i),
-                   args=(args, db_updates_queue, db))
+                   args=(args, db_updates_queue, db, wh_updates_queue))
         t.daemon = True
         t.start()
 
@@ -266,12 +274,6 @@ def main():
         t.daemon = True
         t.start()
 
-    # WH updates queue & WH unique key LFU caches.
-    # The LFU caches will stop the server from resending the same data an
-    # infinite number of times. The caches will be instantiated in the
-    # webhook's startup code.
-    wh_updates_queue = Queue()
-    wh_key_cache = {}
 
     # Thread to process webhook updates.
     for i in range(args.wh_threads):

@@ -2500,7 +2500,7 @@ def parse_gyms(args, gym_responses, wh_update_queue, db_update_queue):
              len(gym_members))
 
 
-def db_updater(args, q, db):
+def db_updater(args, q, db, whq):
     # The forever loop.
     while True:
         try:
@@ -2536,6 +2536,7 @@ def db_updater(args, q, db):
                     log.warning(
                         "DB queue is > 50 (@%d); try increasing --db-threads.",
                         q.qsize())
+                    whq.put(('system', args.status_name + " DB queue too big"))
 
         except Exception as e:
             log.exception('Exception in db_updater: %s', repr(e))
