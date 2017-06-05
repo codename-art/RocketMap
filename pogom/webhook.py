@@ -46,7 +46,8 @@ def send_to_webhook(session, message_type, message):
             log.exception(repr(e))
 
 
-def wh_updater(args, queue, key_caches):
+def wh_updater(args, queue, key_caches, dbq):
+    dbq_flag = True
     wh_threshold_timer = datetime.now()
     wh_over_threshold = False
 
@@ -137,6 +138,10 @@ def wh_updater(args, queue, key_caches):
                                     wh_warning_threshold,
                                     queue.qsize(),
                                     wh_threshold_lifetime)
+
+            if dbq_flag and dbq.qsize() > 50:
+                send_to_webhook(session, 'system', args.status_name + "DB queue too big")
+                dbq_flag = False
 
             queue.task_done()
         except Exception as e:

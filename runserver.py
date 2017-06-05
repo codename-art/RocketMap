@@ -279,7 +279,7 @@ def main():
     for i in range(args.wh_threads):
         log.debug('Starting wh-updater worker thread %d', i)
         t = Thread(target=wh_updater, name='wh-updater-{}'.format(i),
-                   args=(args, wh_updates_queue, wh_key_cache))
+                   args=(args, wh_updates_queue, wh_key_cache, db_updates_queue))
         t.daemon = True
         t.start()
 
