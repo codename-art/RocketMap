@@ -2536,7 +2536,7 @@ def db_updater(args, q, db, whq):
                     log.warning(
                         "DB queue is > 50 (@%d); try increasing --db-threads.",
                         q.qsize())
-                    whq.put(('system', args.status_name + " DB queue too big"))
+                    whq.put(('system', {'msg': args.status_name + " DB queue too big"}))
 
         except Exception as e:
             log.exception('Exception in db_updater: %s', repr(e))
