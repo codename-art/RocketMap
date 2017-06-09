@@ -2337,7 +2337,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
 
     if pokemon:
         db_update_queue.put((Pokemon, pokemon))
-    if pokestops:
+    if pokestops and not args.no_pokestops_update:
         db_update_queue.put((Pokestop, pokestops))
     if gyms:
         db_update_queue.put((Gym, gyms))
