@@ -678,7 +678,7 @@ class Gym(BaseModel):
                           GymDetails.name,
                           GymDetails.description,
                           Gym.guard_pokemon_id,
-                          Gym.gym_points,
+                          # Gym.gym_points,
                           Gym.latitude,
                           Gym.longitude,
                           Gym.last_modified,
