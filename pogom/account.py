@@ -81,6 +81,9 @@ def spin_pokestop(pgacc, fort, step_location):
 
         time.sleep(random.uniform(0.8, 1.8))  # Do not let Niantic throttle
         spin_response = spin_pokestop_request(pgacc, fort, step_location)
+        if not spin_response:
+            return False
+
         time.sleep(random.uniform(2, 4))  # Do not let Niantic throttle
 
         # Check for reCaptcha

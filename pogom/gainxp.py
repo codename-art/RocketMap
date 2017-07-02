@@ -185,9 +185,10 @@ def pokestop_spinnable(fort, step_location):
 def spin_pokestop_update_inventory(pgacc, fort, step_location):
     time.sleep(random.uniform(0.8, 1.8))  # Do not let Niantic throttle
     spin_response = spin_pokestop_request(pgacc, fort, step_location)
-    time.sleep(random.uniform(2, 4))  # Do not let Niantic throttle
     if not spin_response:
         return False
+
+    time.sleep(random.uniform(2, 4))  # Do not let Niantic throttle
 
     # Check for Captcha
     if pgacc.has_captcha():
