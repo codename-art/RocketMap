@@ -48,7 +48,7 @@ from .models import (parse_map, GymDetails, parse_gyms, MainWorker,
 from .utils import now, clear_dict_response, get_args
 from .transform import get_new_coords, jitter_location
 from .account import (setup_api, check_login, get_tutorial_state,
-                      complete_tutorial, AccountSet)
+                      complete_tutorial, AccountSet, parse_new_timestamp_ms)
 from .captcha import captcha_overseer_thread, handle_captcha
 from .proxy import get_new_proxy
 
@@ -455,6 +455,7 @@ def search_overseer_thread(args, new_location_queue, pause_bit, heartb,
 
     # Create specified number of search_worker_thread.
     log.info('Starting search worker threads...')
+    log.info('Configured scheduler is %s.', args.scheduler)
     for i in range(0, args.workers):
         log.debug('Starting search worker thread %d...', i)
 
@@ -512,11 +513,11 @@ def search_overseer_thread(args, new_location_queue, pause_bit, heartb,
 
     # The real work starts here but will halt on pause_bit.set().
     while True:
-        # if (args.hash_key is not None and
-        #         (hashkeys_last_upsert + hashkeys_upsert_min_delay)
-        #         <= timeit.default_timer()):
-        #     upsertKeys(args.hash_key, key_scheduler, db_updates_queue)
-        #     hashkeys_last_upsert = timeit.default_timer()
+        if (args.hash_key is not None and
+                (hashkeys_last_upsert + hashkeys_upsert_min_delay)
+                <= timeit.default_timer()):
+            upsertKeys(args.hash_key, key_scheduler, db_updates_queue)
+            hashkeys_last_upsert = timeit.default_timer()
 
         odt_triggered = (args.on_demand_timeout > 0 and
                          (now() - args.on_demand_timeout) > heartb[0])
@@ -825,7 +826,7 @@ def search_worker_thread(args, account_queue, account_sets,
             # for stat purposes.
             consecutive_noitems = 0
 
-            api = setup_api(args, status)
+            api = setup_api(args, status, account)
 
             # The forever loop for the searches.
             while True:
@@ -978,13 +979,14 @@ def search_worker_thread(args, account_queue, account_sets,
 
                     # Check tutorial completion.
                     if args.complete_tutorial:
-                        tutorial_state = get_tutorial_state(api, account)
+                        tutorial_state = get_tutorial_state(args, api, account)
 
                         if not all(x in tutorial_state
                                    for x in (0, 1, 3, 4, 7)):
                             log.info('Completing tutorial steps for %s.',
                                      account['username'])
-                            complete_tutorial(api, account, tutorial_state)
+                            complete_tutorial(args, api, account,
+                                              tutorial_state)
                         else:
                             log.info('Account %s already completed tutorial.',
                                      account['username'])
@@ -996,7 +998,8 @@ def search_worker_thread(args, account_queue, account_sets,
 
                 # Make the actual request.
                 scan_date = datetime.utcnow()
-                response_dict = map_request(api, step_location, args.no_jitter)
+                response_dict = map_request(api, account, step_location,
+                                            args.no_jitter)
                 status['last_scan_date'] = datetime.utcnow()
 
                 # Record the time and the place that the worker made the
@@ -1025,7 +1028,8 @@ def search_worker_thread(args, account_queue, account_sets,
                         # Make another request for the same location
                         # since the previous one was captcha'd.
                         scan_date = datetime.utcnow()
-                        response_dict = map_request(api, step_location,
+                        response_dict = map_request(api, account,
+                                                    step_location,
                                                     args.no_jitter)
                     elif captcha is not None:
                         account_queue.task_done()
@@ -1116,14 +1120,14 @@ def search_worker_thread(args, account_queue, account_sets,
                                     current_gym, len(gyms_to_update),
                                     step_location[0], step_location[1])
                             time.sleep(random.random() + 2)
-                            response = gym_request(api,  step_location, gym,
-                                                   args.api_version)
+                            response = gym_request(api, account, step_location,
+                                                   gym, args.api_version)
 
                             # Make sure the gym was in range. (Sometimes the
                             # API gets cranky about gyms that are ALMOST 1km
                             # away.)
                             if response['responses'][
-                                    'GET_GYM_DETAILS']['result'] == 2:
+                                    'GYM_GET_INFO']['result'] == 2:
                                 log.warning(
                                     ('Gym @ %f/%f is out of range (%dkm), ' +
                                      'skipping.'),
@@ -1131,7 +1135,7 @@ def search_worker_thread(args, account_queue, account_sets,
                                     distance)
                             else:
                                 gym_responses[gym['gym_id']] = response[
-                                    'responses']['GET_GYM_DETAILS']
+                                    'responses']['GYM_GET_INFO']
                             del response
                             # Increment which gym we're on for status messages.
                             current_gym += 1
@@ -1180,15 +1184,6 @@ def search_worker_thread(args, account_queue, account_sets,
                               key_instance['remaining'],
                               key_instance['maximum'])
 
-                    # Prepare hashing keys to be sent to the db. But only
-                    # sent latest updates of the 'peak' value per key.
-                    hashkeys = {}
-                    hashkeys[key] = key_instance
-                    hashkeys[key]['key'] = key
-                    hashkeys[key]['peak'] = max(key_instance['peak'],
-                                                HashKeys.getStoredPeak(key))
-                    # dbq.put((HashKeys, hashkeys))
-
                 # Delay the desired amount after "scan" completion.
                 delay = scheduler.delay(status['last_scan_date'])
 
@@ -1229,7 +1224,7 @@ def upsertKeys(keys, key_scheduler, db_updates_queue):
     db_updates_queue.put((HashKeys, hashkeys))
 
 
-def map_request(api, position, no_jitter=False):
+def map_request(api, account, position, no_jitter=False):
     # Create scan_location to send to the api based off of position, because
     # tuples aren't mutable.
     if no_jitter:
@@ -1251,49 +1246,51 @@ def map_request(api, position, no_jitter=False):
                             cell_id=cell_ids)
         req.check_challenge()
         req.get_hatched_eggs()
-        req.get_inventory()
+        req.get_inventory(last_timestamp_ms=account['last_timestamp_ms'])
         req.check_awarded_badges()
-        req.download_settings()
         req.get_buddy_walked()
+        req.get_inbox(is_history=True)
         response = req.call()
+
         response = clear_dict_response(response, True)
+        parse_new_timestamp_ms(account, response)
         return response
 
     except HashingOfflineException as e:
-        log.warning('Hashing server is unreachable, it might be offline.')
+        log.error('Hashing server is unreachable, it might be offline.')
     except BadHashRequestException as e:
-        log.warning('Invalid or expired hashing key: %s.',
-                    api._hash_server_token)
+        log.error('Invalid or expired hashing key: %s.',
+                  api._hash_server_token)
     except Exception as e:
-        log.warning('Exception while downloading map: %s', repr(e))
+        log.exception('Exception while downloading map: %s', repr(e))
         return False
 
 
-def gym_request(api, position, gym, api_version):
+def gym_request(api, account, position, gym, api_version):
     try:
-        log.debug('Getting details for gym @ %f/%f (%fkm away).',
+        log.debug('Getting details for gym @ %f/%f (%fkm away)',
                   gym['latitude'], gym['longitude'],
                   calc_distance(position, [gym['latitude'], gym['longitude']]))
         req = api.create_request()
-        req.get_gym_details(gym_id=gym['gym_id'],
-                            player_latitude=f2i(position[0]),
-                            player_longitude=f2i(position[1]),
-                            gym_latitude=gym['latitude'],
-                            gym_longitude=gym['longitude'],
-                            client_version=api_version)
+        req.gym_get_info(
+            gym_id=gym['gym_id'],
+            player_lat_degrees=f2i(position[0]),
+            player_lng_degrees=f2i(position[1]),
+            gym_lat_degrees=gym['latitude'],
+            gym_lng_degrees=gym['longitude'])
         req.check_challenge()
         req.get_hatched_eggs()
-        req.get_inventory()
+        req.get_inventory(last_timestamp_ms=account['last_timestamp_ms'])
         req.check_awarded_badges()
-        req.download_settings()
         req.get_buddy_walked()
-        x = req.call()
-        x = clear_dict_response(x)
-        # Print pretty(x).
-        return x
+        req.get_inbox(is_history=True)
+        response = req.call()
+        parse_new_timestamp_ms(account, response)
+        response = clear_dict_response(response)
+        return response
 
     except Exception as e:
-        log.warning('Exception while downloading gym details: %s.', repr(e))
+        log.exception('Exception while downloading gym details: %s.', repr(e))
         return False
 
 

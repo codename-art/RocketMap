@@ -33,7 +33,7 @@ from .utils import (get_pokemon_name, get_pokemon_rarity, get_pokemon_types,
 from .transform import transform_from_wgs_to_gcj, get_new_coords
 from .customLog import printPokemon
 
-from .account import (tutorial_pokestop_spin, get_player_level, check_login,
+from .account import (tutorial_pokestop_spin, check_login,
                       setup_api, encounter_pokemon_request)
 
 log = logging.getLogger(__name__)
@@ -1752,12 +1752,12 @@ class HashKeys(BaseModel):
     @staticmethod
     # Retrieve the last stored 'peak' value for each hashing key.
     def getStoredPeak(key):
-            result = HashKeys.select(HashKeys.peak).where(HashKeys.key == key)
-            if result:
-                # only one row can be returned
-                return result[0].peak
-            else:
-                return 0
+        result = HashKeys.select(HashKeys.peak).where(HashKeys.key == key)
+        if result:
+            # only one row can be returned
+            return result[0].peak
+        else:
+            return 0
 
 
 def hex_bounds(center, steps=None, radius=None):
@@ -1795,7 +1795,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
     # and a list of forts.
     cells = map_dict['responses']['GET_MAP_OBJECTS']['map_cells']
     # Get the level for the pokestop spin, and to send to webhook.
-    level = get_player_level(map_dict)
+    level = account['level']
     # Use separate level indicator for our L30 encounters.
     encounter_level = level
 
@@ -1986,11 +1986,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                     # Make new API for this account if we're not using an
                     # API that's already logged in.
                     if not hlvl_api:
-                        hlvl_status = {
-                            'account': hlvl_account,
-                            'proxy_url': status['proxy_url']
-                        }
-                        hlvl_api = setup_api(args, hlvl_status)
+                        hlvl_api = setup_api(args, status, account))
 
                         # Hashing key.
                         # TODO: all of this should be handled properly... all
@@ -2016,6 +2012,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                     # Encounter Pokémon.
                     encounter_result = encounter_pokemon_request(
                         hlvl_api,
+                        account,
                         p['encounter_id'],
                         p['spawn_point_id'],
                         scan_location)
@@ -2039,8 +2036,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                         else:
                             # Update level indicator before we clear the
                             # response.
-                            encounter_level = get_player_level(
-                                encounter_result)
+                            encounter_level = hlvl_account['level']
 
                             # User error?
                             if encounter_level < 30:
@@ -2201,7 +2197,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                     if args.webhooks and args.webhook_updates_only:
                         wh_update_queue.put(('pokestop', {
                             'pokestop_id': b64encode(str(f['id'])),
-                            'enabled': f['enabled'],
+                            'enabled': f.get('enabled', False),
                             'latitude': f['latitude'],
                             'longitude': f['longitude'],
                             'last_modified_time': f[
@@ -2225,7 +2221,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
 
                     wh_update_queue.put(('pokestop', {
                         'pokestop_id': b64encode(str(f['id'])),
-                        'enabled': f['enabled'],
+                        'enabled': f.get('enabled', False),
                         'latitude': f['latitude'],
                         'longitude': f['longitude'],
                         'last_modified_time': f['last_modified_timestamp_ms'],
@@ -2242,7 +2238,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
 
                 pokestops[f['id']] = {
                     'pokestop_id': f['id'],
-                    'enabled': f.get('enabled', 0),
+                    'enabled': f.get('enabled', False),
                     'latitude': f['latitude'],
                     'longitude': f['longitude'],
                     'last_modified': datetime.utcfromtimestamp(
@@ -2263,7 +2259,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                         'team_id': f.get('owned_by_team', 0),
                         'guard_pokemon_id': f.get('guard_pokemon_id', 0),
                         'gym_points': f.get('gym_points', 0),
-                        'enabled': f['enabled'],
+                        'enabled': f.get('enabled', False),
                         'latitude': f['latitude'],
                         'longitude': f['longitude'],
                         'last_modified': f['last_modified_timestamp_ms']
@@ -2274,7 +2270,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                     'team_id': f.get('owned_by_team', 0),
                     'guard_pokemon_id': f.get('guard_pokemon_id', 0),
                     'gym_points': f.get('gym_points', 0),
-                    'enabled': f['enabled'],
+                    'enabled': f.get('enabled', False),
                     'latitude': f['latitude'],
                     'longitude': f['longitude'],
                     'last_modified': datetime.utcfromtimestamp(
@@ -2372,93 +2368,115 @@ def parse_gyms(args, gym_responses, wh_update_queue, db_update_queue):
     gym_members = {}
     gym_pokemon = {}
     trainers = {}
-
     i = 0
     for g in gym_responses.values():
-        gym_state = g['gym_state']
-        gym_id = gym_state['fort_data']['id']
+        gym_state = g['gym_status_and_defenders']
+        gym_id = gym_state['pokemon_fort_proto']['id']
 
         gym_details[gym_id] = {
             'gym_id': gym_id,
             'name': g['name'],
             'description': g.get('description'),
-            'url': g['urls'][0],
+            'url': g['url']
         }
 
         if args.webhooks:
             webhook_data = {
                 'id': b64encode(str(gym_id)),
-                'latitude': gym_state['fort_data']['latitude'],
-                'longitude': gym_state['fort_data']['longitude'],
-                'team': gym_state['fort_data'].get('owned_by_team', 0),
+                'latitude': gym_state['pokemon_fort_proto']['latitude'],
+                'longitude': gym_state['pokemon_fort_proto']['longitude'],
+                'team': gym_state['pokemon_fort_proto'].get(
+                    'owned_by_team', 0),
                 'name': g['name'],
                 'description': g.get('description'),
-                'url': g['urls'][0],
+                'url': g['url'],
                 'pokemon': [],
             }
 
-        for member in gym_state.get('memberships', []):
-            gym_members[i] = {
-                'gym_id': gym_id,
-                'pokemon_uid': member['pokemon_data']['id'],
-            }
+        for member in gym_state.get('gym_defender', []):
+            pokemon = member['motivated_pokemon']['pokemon']
+            gym_members[i] = {'gym_id': gym_id, 'pokemon_uid': pokemon['id']}
 
             gym_pokemon[i] = {
-                'pokemon_uid': member['pokemon_data']['id'],
-                'pokemon_id': member['pokemon_data']['pokemon_id'],
-                'cp': member['pokemon_data']['cp'],
-                'trainer_name': member['trainer_public_profile']['name'],
-                'num_upgrades': member['pokemon_data'].get('num_upgrades', 0),
-                'move_1': member['pokemon_data'].get('move_1'),
-                'move_2': member['pokemon_data'].get('move_2'),
-                'height': member['pokemon_data'].get('height_m'),
-                'weight': member['pokemon_data'].get('weight_kg'),
-                'stamina': member['pokemon_data'].get('stamina'),
-                'stamina_max': member['pokemon_data'].get('stamina_max'),
-                'cp_multiplier': member['pokemon_data'].get('cp_multiplier'),
-                'additional_cp_multiplier': member['pokemon_data'].get(
-                    'additional_cp_multiplier', 0),
-                'iv_defense': member['pokemon_data'].get(
-                    'individual_defense', 0),
-                'iv_stamina': member['pokemon_data'].get(
-                    'individual_stamina', 0),
-                'iv_attack': member['pokemon_data'].get(
-                    'individual_attack', 0),
-                'last_seen': datetime.utcnow(),
+                'pokemon_uid':
+                    pokemon['id'],
+                'pokemon_id':
+                    pokemon['pokemon_id'],
+                'cp':
+                    member['motivated_pokemon']['cp_when_deployed'],
+                'trainer_name':
+                    pokemon['owner_name'],
+                'num_upgrades':
+                    pokemon.get('num_upgrades', 0),
+                'move_1':
+                    pokemon.get('move_1'),
+                'move_2':
+                    pokemon.get('move_2'),
+                'height':
+                    pokemon.get('height_m'),
+                'weight':
+                    pokemon.get('weight_kg'),
+                'stamina':
+                    pokemon.get('stamina'),
+                'stamina_max':
+                    pokemon.get('stamina_max'),
+                'cp_multiplier':
+                    pokemon.get('cp_multiplier'),
+                'additional_cp_multiplier':
+                    pokemon.get('additional_cp_multiplier', 0),
+                'iv_defense':
+                    pokemon.get('individual_defense', 0),
+                'iv_stamina':
+                    pokemon.get('individual_stamina', 0),
+                'iv_attack':
+                    pokemon.get('individual_attack', 0),
+                'last_seen':
+                    datetime.utcnow(),
             }
 
             trainers[i] = {
                 'name': member['trainer_public_profile']['name'],
-                'team': gym_state['fort_data']['owned_by_team'],
+                'team': member['trainer_public_profile']['team_color'],
                 'level': member['trainer_public_profile']['level'],
                 'last_seen': datetime.utcnow(),
             }
 
             if args.webhooks:
                 webhook_data['pokemon'].append({
-                    'pokemon_uid': member['pokemon_data']['id'],
-                    'pokemon_id': member['pokemon_data']['pokemon_id'],
-                    'cp': member['pokemon_data']['cp'],
-                    'num_upgrades': member['pokemon_data'].get(
-                        'num_upgrades', 0),
-                    'move_1': member['pokemon_data'].get('move_1'),
-                    'move_2': member['pokemon_data'].get('move_2'),
-                    'height': member['pokemon_data'].get('height_m'),
-                    'weight': member['pokemon_data'].get('weight_kg'),
-                    'stamina': member['pokemon_data'].get('stamina'),
-                    'stamina_max': member['pokemon_data'].get('stamina_max'),
-                    'cp_multiplier': member['pokemon_data'].get(
-                        'cp_multiplier'),
-                    'additional_cp_multiplier': member['pokemon_data'].get(
-                        'additional_cp_multiplier', 0),
-                    'iv_defense': member['pokemon_data'].get(
-                        'individual_defense', 0),
-                    'iv_stamina': member['pokemon_data'].get(
-                        'individual_stamina', 0),
-                    'iv_attack': member['pokemon_data'].get(
-                        'individual_attack', 0),
-                    'trainer_name': member['trainer_public_profile']['name'],
-                    'trainer_level': member['trainer_public_profile']['level'],
+                    'pokemon_uid':
+                        pokemon['id'],
+                    'pokemon_id':
+                        pokemon['pokemon_id'],
+                    'cp':
+                        member['motivated_pokemon']['cp_when_deployed'],
+                    'num_upgrades':
+                        pokemon.get('num_upgrades', 0),
+                    'move_1':
+                        pokemon.get('move_1'),
+                    'move_2':
+                        pokemon.get('move_2'),
+                    'height':
+                        pokemon.get('height_m'),
+                    'weight':
+                        pokemon.get('weight_kg'),
+                    'stamina':
+                        pokemon.get('stamina'),
+                    'stamina_max':
+                        pokemon.get('stamina_max'),
+                    'cp_multiplier':
+                        pokemon.get('cp_multiplier'),
+                    'additional_cp_multiplier':
+                        pokemon.get('additional_cp_multiplier', 0),
+                    'iv_defense':
+                        pokemon.get('individual_defense', 0),
+                    'iv_stamina':
+                        pokemon.get('individual_stamina', 0),
+                    'iv_attack':
+                        pokemon.get('individual_attack', 0),
+                    'trainer_name':
+                        member['trainer_public_profile']['name'],
+                    'trainer_level':
+                        member['trainer_public_profile']['level'],
                 })
 
             i += 1
@@ -2975,4 +2993,3 @@ def database_migrate(db, old_ver):
         )
     # Always log that we're done.
     log.info('Schema upgrade complete.')
-

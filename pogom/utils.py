@@ -1,8 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import hashlib
-import sys
 
+import sys
 import configargparse
 import os
 import math
@@ -14,7 +13,10 @@ import socket
 import struct
 import zipfile
 import requests
+import hashlib
+
 from s2sphere import CellId, LatLng
+from geopy.geocoders import GoogleV3
 
 from . import config
 
@@ -906,54 +908,54 @@ def get_blacklist():
         return []
 
 
-def generate_device_info(username):
-    device_info = {
-        'device_brand': 'Apple',
-        'device_model': 'iPhone',
-        'hardware_manufacturer': 'Apple',
-        'firmware_brand': 'iPhone OS'
-    }
+# Generate random device info.
+# Original by Noctem.
+IPHONES = {'iPhone5,1': 'N41AP',
+           'iPhone5,2': 'N42AP',
+           'iPhone5,3': 'N48AP',
+           'iPhone5,4': 'N49AP',
+           'iPhone6,1': 'N51AP',
+           'iPhone6,2': 'N53AP',
+           'iPhone7,1': 'N56AP',
+           'iPhone7,2': 'N61AP',
+           'iPhone8,1': 'N71AP',
+           'iPhone8,2': 'N66AP',
+           'iPhone8,4': 'N69AP',
+           'iPhone9,1': 'D10AP',
+           'iPhone9,2': 'D11AP',
+           'iPhone9,3': 'D101AP',
+           'iPhone9,4': 'D111AP'}
 
-    # Generate random device info.
-    # Original by Noctem.
-    IPHONES = {
-        'iPhone5,1': 'N41AP',
-        'iPhone5,2': 'N42AP',
-        'iPhone5,3': 'N48AP',
-        'iPhone5,4': 'N49AP',
-        'iPhone6,1': 'N51AP',
-        'iPhone6,2': 'N53AP',
-        'iPhone7,1': 'N56AP',
-        'iPhone7,2': 'N61AP',
-        'iPhone8,1': 'N71AP',
-        'iPhone8,2': 'N66AP',
-        'iPhone8,4': 'N69AP',
-        'iPhone9,1': 'D10AP',
-        'iPhone9,2': 'D11AP',
-        'iPhone9,3': 'D101AP',
-        'iPhone9,4': 'D111AP'
-    }
+
+def generate_device_info(identifier):
+    md5 = hashlib.md5()
+    md5.update(identifier)
+    pick_hash = int(md5.hexdigest(), 16)
+
+    device_info = {'device_brand': 'Apple', 'device_model': 'iPhone',
+                   'hardware_manufacturer': 'Apple',
+                   'firmware_brand': 'iPhone OS'}
     devices = tuple(IPHONES.keys())
 
-    IOS10_VERSIONS = ('10.1.1', '10.2.1', '10.3.2')
+    ios8 = ('8.0', '8.0.1', '8.0.2', '8.1', '8.1.1',
+            '8.1.2', '8.1.3', '8.2', '8.3', '8.4', '8.4.1')
+    ios9 = ('9.0', '9.0.1', '9.0.2', '9.1', '9.2', '9.2.1',
+            '9.3', '9.3.1', '9.3.2', '9.3.3', '9.3.4', '9.3.5')
+    ios10 = ('10.0', '10.0.1', '10.0.2', '10.0.3', '10.1', '10.1.1')
 
-    # Make random numbers reproducible.
-    args = get_args()
-    local_random = random.Random()
-    seed = int(hashlib.sha1(username).hexdigest(), 16)
-    seed += 181
-    local_random.seed(seed)
+    device_pick = devices[pick_hash % len(devices)]
+    device_info['device_model_boot'] = device_pick
+    device_info['hardware_model'] = IPHONES[device_pick]
+    device_info['device_id'] = md5.hexdigest()
 
-    device = local_random.choice(devices)
-    device_info['device_model_boot'] = device
-    device_info['hardware_model'] = IPHONES[device]
-    device_info['device_id'] = '%032x' % local_random.randrange(16 ** 32)
-    device_info['firmware_type'] = local_random.choice(IOS10_VERSIONS)
+    if device_pick in ('iPhone9,1', 'iPhone9,2', 'iPhone9,3', 'iPhone9,4'):
+        ios_pool = ios10
+    elif device_pick in ('iPhone8,1', 'iPhone8,2', 'iPhone8,4'):
+        ios_pool = ios9 + ios10
+    else:
+        ios_pool = ios8 + ios9 + ios10
 
-    log.info("Account {} is using an {} on iOS {} with device ID {}".format(
-        username, device, device_info['firmware_type'],
-        device_info['device_id']))
-
+    device_info['firmware_type'] = ios_pool[pick_hash % len(ios_pool)]
     return device_info
 
 
@@ -996,3 +998,37 @@ def calc_pokemon_level(cp_multiplier):
         pokemon_level = 171.0112688 * cp_multiplier - 95.20425243
     pokemon_level = int((round(pokemon_level) * 2) / 2)
     return pokemon_level
+
+
+@memoize
+def gmaps_reverse_geolocate(gmaps_key, locale, location):
+    # Find the reverse geolocation
+    geolocator = GoogleV3(api_key=gmaps_key)
+
+    player_locale = {
+        'country': 'US',
+        'language': locale,
+        'timezone': 'America/Denver'
+    }
+
+    try:
+        reverse = geolocator.reverse(location)
+        country_code = reverse[-1].raw['address_components'][-1]['short_name']
+
+        try:
+            timezone = geolocator.timezone(location)
+            player_locale.update({
+                'country': country_code,
+                'timezone': str(timezone)
+            })
+        except Exception as e:
+            log.exception('Exception on Google Timezone API. '
+                          + 'Please check that you have Google Timezone API'
+                          + ' enabled for your API key'
+                          + ' (https://developers.google.com/maps/'
+                          + 'documentation/timezone/intro): %s.', e)
+    except Exception as e:
+        log.exception('Exception while obtaining player locale: %s.'
+                      + ' Using default locale.', e)
+
+    return player_locale

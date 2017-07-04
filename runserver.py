@@ -19,7 +19,7 @@ from flask_cache_bust import init_cache_busting
 from pogom import config
 from pogom.app import Pogom
 from pogom.scout import scout_init
-from pogom.utils import get_args, now, extract_sprites
+from pogom.utils import get_args, now, extract_sprites, gmaps_reverse_geolocate
 from pogom.altitude import get_gmaps_altitude
 
 from pogom.search import search_overseer_thread
@@ -134,6 +134,15 @@ def main():
             log.info('Sprite files not present, extracting bundled ones...')
             extract_sprites(root_path)
             log.info('Done!')
+
+        # Check if custom.css is used otherwise fall back to default.
+        if os.path.exists(os.path.join(root_path, 'static/css/custom.css')):
+            args.custom_css = True
+            log.info(
+                'File \"custom.css\" found, applying user-defined settings.')
+        else:
+            args.custom_css = False
+            log.info('No file \"custom.css\" found, using default settings.')
 
     # These are very noisy, let's shush them up a bit.
     logging.getLogger('peewee').setLevel(logging.INFO)
@@ -318,6 +327,12 @@ def main():
             t.start()
         else:
             log.info('Periodical proxies refresh disabled.')
+
+        # Update player locale.
+        args.player_locale = gmaps_reverse_geolocate(
+            args.gmaps_key,
+            args.locale,
+            str(position[0]) + ', ' + str(position[1]))
 
         # Gather the Pokemon!
 
