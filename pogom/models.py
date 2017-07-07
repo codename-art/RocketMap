@@ -755,6 +755,28 @@ class LocationAltitude(BaseModel):
         InsertQuery(cls, rows=[cls.new_loc(loc, altitude)]).upsert().execute()
 
 
+class PlayerLocale(BaseModel):
+    location = Utf8mb4CharField(primary_key=True, max_length=50, index=True)
+    country = Utf8mb4CharField(max_length=2)
+    language = Utf8mb4CharField(max_length=2)
+    timezone = Utf8mb4CharField(max_length=50)
+
+    @staticmethod
+    def get_locale(location):
+        locale = None
+        try:
+            query = PlayerLocale.get(PlayerLocale.location == location)
+            locale = {
+                'country': query.country,
+                'language': query.language,
+                'timezone': query.timezone
+            }
+        except PlayerLocale.DoesNotExist:
+            log.debug('This location is not yet in PlayerLocale DB table.')
+        finally:
+            return locale
+
+
 class ScannedLocation(BaseModel):
     cellid = Utf8mb4CharField(primary_key=True, max_length=50)
     latitude = DoubleField()
@@ -2254,6 +2276,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                     # Explicitly set 'webhook_data', in case we want to change
                     # the information pushed to webhooks.  Similar to above
                     # and previous commits.
+                    gym_display = f.get('gym_display', {})
                     wh_update_queue.put(('gym', {
                         'gym_id': b64encode(str(f['id'])),
                         'team_id': f.get('owned_by_team', 0),
@@ -2262,6 +2285,11 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                         'enabled': f.get('enabled', False),
                         'latitude': f['latitude'],
                         'longitude': f['longitude'],
+                        'total_gym_cp': gym_display.get('total_gym_cp', 0),
+                        'lowest_pokemon_motivation': gym_display.get(
+                            'lowest_pokemon_motivation', 0),
+                        'occupied_seconds': gym_display.get(
+                            'occupied_millis', 0) / 1000,
                         'last_modified': f['last_modified_timestamp_ms']
                     }))
 
@@ -2676,7 +2704,7 @@ def create_tables(db):
     tables = [Pokemon, Pokestop, Gym, ScannedLocation, GymDetails,
               GymMember, GymPokemon, Trainer, MainWorker, WorkerStatus,
               SpawnPoint, ScanSpawnPoint, SpawnpointDetectionData,
-              Token, LocationAltitude, HashKeys]
+              Token, LocationAltitude, PlayerLocale, HashKeys]
     for table in tables:
         if not table.table_exists():
             log.info('Creating table: %s', table.__name__)
@@ -2690,7 +2718,7 @@ def drop_tables(db):
     tables = [Pokemon, Pokestop, Gym, ScannedLocation, Versions,
               GymDetails, GymMember, GymPokemon, Trainer, MainWorker,
               WorkerStatus, SpawnPoint, ScanSpawnPoint,
-              SpawnpointDetectionData, LocationAltitude,
+              SpawnpointDetectionData, LocationAltitude, PlayerLocale,
               Token, HashKeys]
     db.connect()
     db.execute_sql('SET FOREIGN_KEY_CHECKS=0;')
