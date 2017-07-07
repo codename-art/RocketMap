@@ -492,7 +492,7 @@ def search_overseer_thread(args, new_location_queue, pause_bit, heartb,
     account_sets = AccountSet(args.hlvl_kph)
     threadStatus = {}
     key_scheduler = None
-    api_version = '0.67.1'
+    api_version = '0.67.2'
     api_check_time = 0
     hashkeys_last_upsert = timeit.default_timer()
     hashkeys_upsert_min_delay = 5.0

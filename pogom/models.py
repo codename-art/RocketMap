@@ -2401,6 +2401,11 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                         'enabled': f.get('enabled', False),
                         'latitude': f['latitude'],
                         'longitude': f['longitude'],
+                        'total_gym_cp': gym_display.get('total_gym_cp', 0),
+                        'lowest_pokemon_motivation': gym_display.get(
+                            'lowest_pokemon_motivation', 0),
+                        'occupied_seconds': gym_display.get(
+                            'occupied_millis', 0) / 1000,
                         'last_modified': f['last_modified_timestamp_ms']
                     }))
 
