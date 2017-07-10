@@ -13,7 +13,7 @@ import math
 from peewee import (InsertQuery, Check, CompositeKey, ForeignKeyField,
                     SmallIntegerField, IntegerField, CharField, DoubleField,
                     BooleanField, DateTimeField, fn, DeleteQuery, FloatField,
-                    SQL, TextField, JOIN, OperationalError)
+                    TextField, JOIN, OperationalError)
 from playhouse.flask_utils import FlaskDB
 from playhouse.pool import PooledMySQLDatabase
 from playhouse.shortcuts import RetryOperationalError, case
@@ -42,7 +42,7 @@ args = get_args()
 flaskDb = FlaskDB()
 cache = TTLCache(maxsize=100, ttl=60 * 5)
 
-db_schema_version = 20
+db_schema_version = 21
 
 
 class MyRetryDB(RetryOperationalError, PooledMySQLDatabase):
@@ -325,123 +325,6 @@ class Pokemon(BaseModel):
 
         return list(itertools.chain(*query))
 
-    @classmethod
-    def get_spawn_time(cls, disappear_time):
-        return (disappear_time + 2700) % 3600
-
-    @classmethod
-    def get_spawnpoints(cls, swLat, swLng, neLat, neLng, timestamp=0,
-                        oSwLat=None, oSwLng=None, oNeLat=None, oNeLng=None):
-        query = (Pokemon
-                 .select(Pokemon.latitude, Pokemon.longitude,
-                         Pokemon.spawnpoint_id,
-                         (date_secs(Pokemon.disappear_time)).alias('time'),
-                         fn.Count(Pokemon.spawnpoint_id).alias('count')))
-
-        if timestamp > 0:
-            query = (query
-                     .where(((Pokemon.last_modified >
-                              datetime.utcfromtimestamp(timestamp / 1000))) &
-                            ((Pokemon.latitude >= swLat) &
-                             (Pokemon.longitude >= swLng) &
-                             (Pokemon.latitude <= neLat) &
-                             (Pokemon.longitude <= neLng)))
-                     .dicts())
-        elif oSwLat and oSwLng and oNeLat and oNeLng:
-            # Send spawnpoints in view but exclude those within old boundaries.
-            # Only send newly uncovered spawnpoints.
-            query = (query
-                     .where((((Pokemon.latitude >= swLat) &
-                              (Pokemon.longitude >= swLng) &
-                              (Pokemon.latitude <= neLat) &
-                              (Pokemon.longitude <= neLng))) &
-                            ~((Pokemon.latitude >= oSwLat) &
-                              (Pokemon.longitude >= oSwLng) &
-                              (Pokemon.latitude <= oNeLat) &
-                              (Pokemon.longitude <= oNeLng)))
-                     .dicts())
-        elif swLat and swLng and neLat and neLng:
-            query = (query
-                     .where((Pokemon.latitude <= neLat) &
-                            (Pokemon.latitude >= swLat) &
-                            (Pokemon.longitude >= swLng) &
-                            (Pokemon.longitude <= neLng)
-                            ))
-
-        query = query.group_by(Pokemon.latitude, Pokemon.longitude,
-                               Pokemon.spawnpoint_id, SQL('time'))
-
-        queryDict = query.dicts()
-        spawnpoints = {}
-
-        for sp in queryDict:
-            key = sp['spawnpoint_id']
-            disappear_time = cls.get_spawn_time(sp.pop('time'))
-            count = int(sp['count'])
-
-            if key not in spawnpoints:
-                spawnpoints[key] = sp
-            else:
-                spawnpoints[key]['special'] = True
-
-            if ('time' not in spawnpoints[key] or
-                    count >= spawnpoints[key]['count']):
-                spawnpoints[key]['time'] = disappear_time
-                spawnpoints[key]['count'] = count
-
-        # Helping out the GC.
-        for sp in spawnpoints.values():
-            del sp['count']
-
-        return list(spawnpoints.values())
-
-    @classmethod
-    def get_spawnpoints_in_hex(cls, center, steps):
-        log.info('Finding spawnpoints {} steps away.'.format(steps))
-
-        n, e, s, w = hex_bounds(center, steps)
-
-        query = (Pokemon
-                 .select(Pokemon.latitude.alias('lat'),
-                         Pokemon.longitude.alias('lng'),
-                         (date_secs(Pokemon.disappear_time)).alias('time'),
-                         Pokemon.spawnpoint_id
-                         ))
-        query = (query.where((Pokemon.latitude <= n) &
-                             (Pokemon.latitude >= s) &
-                             (Pokemon.longitude >= w) &
-                             (Pokemon.longitude <= e)
-                             ))
-        # Sqlite doesn't support distinct on columns.
-        if args.db_type == 'mysql':
-            query = query.distinct(Pokemon.spawnpoint_id)
-        else:
-            query = query.group_by(Pokemon.spawnpoint_id)
-
-        s = list(query.dicts())
-
-        # The distance between scan circles of radius 70 in a hex is 121.2436
-        # steps - 1 to account for the center circle then add 70 for the edge.
-        step_distance = ((steps - 1) * 121.2436) + 70
-        # Compare spawnpoint list to a circle with radius steps * 120.
-        # Uses the direct geopy distance between the center and the spawnpoint.
-        filtered = []
-
-        for idx, sp in enumerate(s):
-            if geopy.distance.distance(
-                    center, (sp['lat'], sp['lng'])).meters <= step_distance:
-                filtered.append(s[idx])
-
-        # At this point, 'time' is DISAPPEARANCE time, we're going to morph it
-        # to APPEARANCE time accounting for hour wraparound.
-        for location in filtered:
-            # todo: this DOES NOT ACCOUNT for Pokemon that appear sooner and
-            # live longer, but you'll _always_ have at least 15 minutes, so it
-            # works well enough.
-            location['time'] = cls.get_spawn_time(location['time'])
-
-        return filtered
-
 
 class Pokestop(BaseModel):
     pokestop_id = Utf8mb4CharField(primary_key=True, max_length=50)
@@ -542,14 +425,14 @@ class Pokestop(BaseModel):
 
 
 class Gym(BaseModel):
-
     gym_id = Utf8mb4CharField(primary_key=True, max_length=50)
     team_id = SmallIntegerField()
     guard_pokemon_id = SmallIntegerField()
-    gym_points = IntegerField()
+    slots_available = SmallIntegerField()
     enabled = BooleanField()
     latitude = DoubleField()
     longitude = DoubleField()
+    total_cp = SmallIntegerField()
     last_modified = DateTimeField(index=True)
     last_scanned = DateTimeField(default=datetime.utcnow, index=True)
 
@@ -607,6 +490,7 @@ class Gym(BaseModel):
         for g in results:
             g['name'] = None
             g['pokemon'] = []
+            g['raid'] = None
             gyms[g['gym_id']] = g
             gym_ids.append(g['gym_id'])
 
@@ -615,6 +499,8 @@ class Gym(BaseModel):
                        .select(
                            GymMember.gym_id,
                            GymPokemon.cp.alias('pokemon_cp'),
+                           GymMember.cp_decayed,
+                           GymMember.deployment_time,
                            GymPokemon.pokemon_id,
                            Trainer.name.alias('trainer_name'),
                            Trainer.level.alias('trainer_level'))
@@ -625,7 +511,6 @@ class Gym(BaseModel):
                                           Trainer.name))
                        .where(GymMember.gym_id << gym_ids)
                        .where(GymMember.last_scanned > Gym.last_modified)
-                       .order_by(GymMember.gym_id, GymPokemon.cp)
                        .distinct()
                        .dicts())
 
@@ -643,6 +528,17 @@ class Gym(BaseModel):
             for d in details:
                 gyms[d['gym_id']]['name'] = d['name']
 
+            raids = (Raid
+                     .select()
+                     .where(Raid.gym_id << gym_ids)
+                     .dicts())
+
+            for r in raids:
+                if r['pokemon_id']:
+                    r['pokemon_name'] = get_pokemon_name(r['pokemon_id'])
+                    r['pokemon_types'] = get_pokemon_types(r['pokemon_id'])
+                gyms[r['gym_id']]['raid'] = r
+
         # Re-enable the GC.
         gc.enable()
 
@@ -650,22 +546,26 @@ class Gym(BaseModel):
 
     @staticmethod
     def get_gym(id):
-        result = (Gym
-                  .select(Gym.gym_id,
-                          Gym.team_id,
-                          GymDetails.name,
-                          GymDetails.description,
-                          Gym.guard_pokemon_id,
-                          Gym.gym_points,
-                          Gym.latitude,
-                          Gym.longitude,
-                          Gym.last_modified,
-                          Gym.last_scanned)
-                  .join(GymDetails, JOIN.LEFT_OUTER,
-                        on=(Gym.gym_id == GymDetails.gym_id))
-                  .where(Gym.gym_id == id)
-                  .dicts()
-                  .get())
+
+        try:
+            result = (Gym
+                      .select(Gym.gym_id,
+                              Gym.team_id,
+                              GymDetails.name,
+                              GymDetails.description,
+                              Gym.guard_pokemon_id,
+                              Gym.slots_available,
+                              Gym.latitude,
+                              Gym.longitude,
+                              Gym.last_modified,
+                              Gym.last_scanned)
+                      .join(GymDetails, JOIN.LEFT_OUTER,
+                            on=(Gym.gym_id == GymDetails.gym_id))
+                      .where(Gym.gym_id == id)
+                      .dicts()
+                      .get())
+        except Gym.DoesNotExist:
+            return None
 
         result['guard_pokemon_name'] = get_pokemon_name(
             result['guard_pokemon_id']) if result['guard_pokemon_id'] else ''
@@ -673,6 +573,8 @@ class Gym(BaseModel):
 
         pokemon = (GymMember
                    .select(GymPokemon.cp.alias('pokemon_cp'),
+                           GymMember.cp_decayed,
+                           GymMember.deployment_time,
                            GymPokemon.pokemon_id,
                            GymPokemon.pokemon_uid,
                            GymPokemon.move_1,
@@ -688,7 +590,7 @@ class Gym(BaseModel):
                    .join(Trainer, on=(GymPokemon.trainer_name == Trainer.name))
                    .where(GymMember.gym_id == id)
                    .where(GymMember.last_scanned > Gym.last_modified)
-                   .order_by(GymPokemon.cp.desc())
+                   .order_by(GymMember.cp_decayed.desc())
                    .distinct()
                    .dicts())
 
@@ -707,7 +609,29 @@ class Gym(BaseModel):
 
             result['pokemon'].append(p)
 
+        try:
+            raid = Raid.select(Raid).where(Raid.gym_id == id).dicts().get()
+            if raid['pokemon_id']:
+                raid['pokemon_name'] = get_pokemon_name(raid['pokemon_id'])
+                raid['pokemon_types'] = get_pokemon_types(raid['pokemon_id'])
+            result['raid'] = raid
+        except Raid.DoesNotExist:
+            pass
+
         return result
+
+
+class Raid(BaseModel):
+    gym_id = Utf8mb4CharField(primary_key=True, max_length=50)
+    level = IntegerField(index=True)
+    spawn = DateTimeField(index=True)
+    start = DateTimeField(index=True)
+    end = DateTimeField(index=True)
+    pokemon_id = SmallIntegerField(null=True)
+    cp = IntegerField(null=True)
+    move_1 = SmallIntegerField(null=True)
+    move_2 = SmallIntegerField(null=True)
+    last_scanned = DateTimeField(default=datetime.utcnow, index=True)
 
 
 class LocationAltitude(BaseModel):
@@ -1282,6 +1206,124 @@ class SpawnPoint(BaseModel):
 
         }
 
+    @staticmethod
+    def get_spawnpoints(swLat, swLng, neLat, neLng, timestamp=0,
+                        oSwLat=None, oSwLng=None, oNeLat=None, oNeLng=None):
+        query = (SpawnPoint
+                 .select(SpawnPoint.latitude, SpawnPoint.longitude,
+                         SpawnPoint.id, SpawnPoint.links, SpawnPoint.kind,
+                         SpawnPoint.latest_seen, SpawnPoint.earliest_unseen,
+                         ScannedLocation.done)
+                 .join(ScanSpawnPoint)
+                 .join(ScannedLocation)
+                 .dicts())
+
+        if timestamp > 0:
+            query = (query
+                     .where(((SpawnPoint.last_scanned >
+                              datetime.utcfromtimestamp(timestamp / 1000))) &
+                            ((SpawnPoint.latitude >= swLat) &
+                            (SpawnPoint.longitude >= swLng) &
+                            (SpawnPoint.latitude <= neLat) &
+                            (SpawnPoint.longitude <= neLng)))
+                     .dicts())
+        elif oSwLat and oSwLng and oNeLat and oNeLng:
+            # Send spawnpoints in view but exclude those within old boundaries.
+            # Only send newly uncovered spawnpoints.
+            query = (query
+                     .where((((SpawnPoint.latitude >= swLat) &
+                              (SpawnPoint.longitude >= swLng) &
+                              (SpawnPoint.latitude <= neLat) &
+                              (SpawnPoint.longitude <= neLng))) &
+                            ~((SpawnPoint.latitude >= oSwLat) &
+                              (SpawnPoint.longitude >= oSwLng) &
+                              (SpawnPoint.latitude <= oNeLat) &
+                              (SpawnPoint.longitude <= oNeLng)))
+                     .dicts())
+        elif swLat and swLng and neLat and neLng:
+            query = (query
+                     .where((SpawnPoint.latitude <= neLat) &
+                            (SpawnPoint.latitude >= swLat) &
+                            (SpawnPoint.longitude >= swLng) &
+                            (SpawnPoint.longitude <= neLng)))
+
+        queryDict = query.dicts()
+        spawnpoints = {}
+        for sp in queryDict:
+            key = sp['id']
+            appear_time, disappear_time = SpawnPoint.start_end(sp)
+            spawnpoints[key] = sp
+            spawnpoints[key]['disappear_time'] = disappear_time
+            spawnpoints[key]['appear_time'] = appear_time
+            if not SpawnPoint.tth_found(sp) or not sp['done']:
+                spawnpoints[key]['uncertain'] = True
+
+        # Helping out the GC.
+        for sp in spawnpoints.values():
+            del sp['done']
+            del sp['kind']
+            del sp['links']
+            del sp['latest_seen']
+            del sp['earliest_unseen']
+
+        return list(spawnpoints.values())
+
+    @classmethod
+    def get_spawnpoints_in_hex(cls, center, steps):
+
+        log.info('Finding spawnpoints {} steps away.'.format(steps))
+
+        n, e, s, w = hex_bounds(center, steps)
+
+        query = (SpawnPoint
+                 .select(SpawnPoint.latitude.alias('lat'),
+                         SpawnPoint.longitude.alias('lng'),
+                         SpawnPoint.id,
+                         SpawnPoint.earliest_unseen,
+                         SpawnPoint.latest_seen,
+                         SpawnPoint.kind,
+                         SpawnPoint.links,
+                         ))
+        query = (query.where((SpawnPoint.latitude <= n) &
+                             (SpawnPoint.latitude >= s) &
+                             (SpawnPoint.longitude >= w) &
+                             (SpawnPoint.longitude <= e)
+                             ))
+        # Sqlite doesn't support distinct on columns.
+        if args.db_type == 'mysql':
+            query = query.distinct(SpawnPoint.id)
+        else:
+            query = query.group_by(SpawnPoint.id)
+
+        s = list(query.dicts())
+
+        # The distance between scan circles of radius 70 in a hex is 121.2436
+        # steps - 1 to account for the center circle then add 70 for the edge.
+        step_distance = ((steps - 1) * 121.2436) + 70
+        # Compare spawnpoint list to a circle with radius steps * 120.
+        # Uses the direct geopy distance between the center and the spawnpoint.
+        filtered = []
+
+        for idx, sp in enumerate(s):
+            if geopy.distance.distance(
+                    center, (sp['lat'], sp['lng'])).meters <= step_distance:
+                filtered.append(s[idx])
+
+        # We use 'time' as appearance time as this was how things worked
+        # previously we now also include 'disappear_time' because we
+        # can and it is meaningful in a list of spawn data
+        # the other changes also maintain a similar file format
+        for sp in filtered:
+            sp['time'], sp['disappear_time'] = cls.start_end(sp)
+            del sp['earliest_unseen']
+            del sp['latest_seen']
+            del sp['kind']
+            del sp['links']
+            sp['spawnpoint_id'] = sp['id']
+            del sp['id']
+
+        return filtered
+
     # Confirm if tth has been found.
     @staticmethod
     def tth_found(sp):
@@ -1667,6 +1709,8 @@ class GymMember(BaseModel):
     gym_id = Utf8mb4CharField(index=True)
     pokemon_uid = Utf8mb4CharField(index=True)
     last_scanned = DateTimeField(default=datetime.utcnow, index=True)
+    deployment_time = DateTimeField()
+    cp_decayed = SmallIntegerField()
 
     class Meta:
         primary_key = False
@@ -1799,6 +1843,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
     pokemon = {}
     pokestops = {}
     gyms = {}
+    raids = {}
     skipped = 0
     stopsskipped = 0
     forts = []
@@ -2066,7 +2111,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                                                 + ' or higher, but account '
                                                 + hlvl_account['username']
                                                 + ' is only level '
-                                                + encounter_level + '.')
+                                                + str(encounter_level) + '.')
 
                         if 'wild_pokemon' not in encounter_result['responses']['ENCOUNTER']:
                             # possible shadowban
@@ -2271,48 +2316,120 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
 
             # Currently, there are only stops and gyms.
             elif config['parse_gyms'] and f.get('type') is None:
+                b64_gym_id = b64encode(str(f['id']))
+                gym_display = f.get('gym_display', {})
+                raid_info = f.get('raid_info', {})
                 # Send gyms to webhooks.
                 if args.webhooks and not args.webhook_updates_only:
+                    raid_active_until = 0
+                    raid_battle_ms = raid_info.get('raid_battle_ms', 0)
+                    raid_end_ms = raid_info.get('raid_end_ms', 0)
+
+                    if raid_battle_ms / 1000 > time.time():
+                        raid_active_until = raid_end_ms / 1000
+
                     # Explicitly set 'webhook_data', in case we want to change
                     # the information pushed to webhooks.  Similar to above
                     # and previous commits.
-                    gym_display = f.get('gym_display', {})
                     wh_update_queue.put(('gym', {
-                        'gym_id': b64encode(str(f['id'])),
-                        'team_id': f.get('owned_by_team', 0),
-                        'guard_pokemon_id': f.get('guard_pokemon_id', 0),
-                        'gym_points': f.get('gym_points', 0),
-                        'enabled': f.get('enabled', False),
-                        'latitude': f['latitude'],
-                        'longitude': f['longitude'],
-                        'total_gym_cp': gym_display.get('total_gym_cp', 0),
-                        'lowest_pokemon_motivation': gym_display.get(
-                            'lowest_pokemon_motivation', 0),
-                        'occupied_seconds': gym_display.get(
-                            'occupied_millis', 0) / 1000,
-                        'last_modified': f['last_modified_timestamp_ms']
+                        'gym_id':
+                            b64_gym_id,
+                        'team_id':
+                            f.get('owned_by_team', 0),
+                        'guard_pokemon_id':
+                            f.get('guard_pokemon_id', 0),
+                        'slots_available':
+                            gym_display.get('slots_available', 0),
+                        'total_cp':
+                            gym_display.get('total_gym_cp', 0),
+                        'enabled':
+                            f['enabled'],
+                        'latitude':
+                            f['latitude'],
+                        'longitude':
+                            f['longitude'],
+                        'lowest_pokemon_motivation':
+                            gym_display.get('lowest_pokemon_motivation', 0),
+                        'occupied_since':
+                            calendar.timegm((datetime.utcnow() - timedelta(
+                                milliseconds=gym_display.get(
+                                    'occupied_millis', 0))).timetuple()),
+                        'last_modified':
+                            f['last_modified_timestamp_ms'],
+                        'raid_active_until':
+                            raid_active_until
                     }))
 
                 gyms[f['id']] = {
-                    'gym_id': f['id'],
-                    'team_id': f.get('owned_by_team', 0),
-                    'guard_pokemon_id': f.get('guard_pokemon_id', 0),
-                    'gym_points': f.get('gym_points', 0),
-                    'enabled': f.get('enabled', False),
-                    'latitude': f['latitude'],
-                    'longitude': f['longitude'],
-                    'last_modified': datetime.utcfromtimestamp(
-                        f['last_modified_timestamp_ms'] / 1000.0),
+                    'gym_id':
+                        f['id'],
+                    'team_id':
+                        f.get('owned_by_team', 0),
+                    'guard_pokemon_id':
+                        f.get('guard_pokemon_id', 0),
+                    'slots_available':
+                        gym_display.get('slots_available', 0),
+                    'total_cp':
+                        gym_display.get('total_gym_cp', 0),
+                    'enabled':
+                        f['enabled'],
+                    'latitude':
+                        f['latitude'],
+                    'longitude':
+                        f['longitude'],
+                    'last_modified':
+                        datetime.utcfromtimestamp(
+                            f['last_modified_timestamp_ms'] / 1000.0),
                 }
+
+                if config['parse_raids'] and f.get('type') is None:
+                    if raid_info:
+                        raids[f['id']] = {
+                            'gym_id': f['id'],
+                            'level': raid_info['raid_level'],
+                            'spawn': datetime.utcfromtimestamp(
+                                raid_info['raid_spawn_ms'] / 1000.0),
+                            'start': datetime.utcfromtimestamp(
+                                raid_info['raid_battle_ms'] / 1000.0),
+                            'end': datetime.utcfromtimestamp(
+                                raid_info['raid_end_ms'] / 1000.0),
+                            'pokemon_id': None,
+                            'cp': None,
+                            'move_1': None,
+                            'move_2': None
+                        }
+
+                        raid_pokemon = raid_info.get('raid_pokemon', {})
+                        if raid_pokemon:
+                            raids[f['id']].update({
+                                'pokemon_id': raid_pokemon['pokemon_id'],
+                                'cp': raid_pokemon['cp'],
+                                'move_1': raid_pokemon['move_1'],
+                                'move_2': raid_pokemon['move_2']
+                            })
+
+                        if args.webhooks and not args.webhook_updates_only:
+                            wh_raid = raids[f['id']].copy()
+                            wh_raid.update({
+                                'gym_id': b64_gym_id,
+                                'spawn': raid_info['raid_spawn_ms'] / 1000,
+                                'start': raid_info['raid_battle_ms'] / 1000,
+                                'end': raid_info['raid_end_ms'] / 1000,
+                                'latitude': f['latitude'],
+                                'longitude': f['longitude']
+                            })
+                            wh_update_queue.put(('raid', wh_raid))
 
         # Helping out the GC.
         del forts
 
-    log.info('Parsing found Pokemon: %d, nearby: %d, pokestops: %d, gyms: %d.',
+    log.info('Parsing found Pokemon: %d, nearby: %d, pokestops: %d,' +
+             ' gyms: %d, raids: %d.',
              len(pokemon) + skipped,
              nearby_pokemon,
              len(pokestops) + stopsskipped,
-             len(gyms))
+             len(gyms),
+             len(raids))
 
     log.debug('Skipped Pokemon: %d, pokestops: %d.', skipped, stopsskipped)
 
@@ -2365,6 +2482,8 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
         db_update_queue.put((Pokestop, pokestops))
     if gyms:
         db_update_queue.put((Gym, gyms))
+    if raids:
+        db_update_queue.put((Raid, raids))
     if spawn_points:
         db_update_queue.put((SpawnPoint, spawn_points))
         db_update_queue.put((ScanSpawnPoint, scan_spawn_points))
@@ -2423,8 +2542,18 @@ def parse_gyms(args, gym_responses, wh_update_queue, db_update_queue):
 
         for member in gym_state.get('gym_defender', []):
             pokemon = member['motivated_pokemon']['pokemon']
-            gym_members[i] = {'gym_id': gym_id, 'pokemon_uid': pokemon['id']}
-
+            gym_members[i] = {
+                'gym_id':
+                    gym_id,
+                'pokemon_uid':
+                    pokemon['id'],
+                'cp_decayed':
+                    member['motivated_pokemon']['cp_now'],
+                'deployment_time':
+                    datetime.utcnow() -
+                    timedelta(milliseconds=member['deployment_totals']
+                              ['deployment_duration_ms'])
+            }
             gym_pokemon[i] = {
                 'pokemon_uid':
                     pokemon['id'],
@@ -2470,42 +2599,17 @@ def parse_gyms(args, gym_responses, wh_update_queue, db_update_queue):
             }
 
             if args.webhooks:
-                webhook_data['pokemon'].append({
-                    'pokemon_uid':
-                        pokemon['id'],
-                    'pokemon_id':
-                        pokemon['pokemon_id'],
-                    'cp':
-                        member['motivated_pokemon']['cp_when_deployed'],
-                    'num_upgrades':
-                        pokemon.get('num_upgrades', 0),
-                    'move_1':
-                        pokemon.get('move_1'),
-                    'move_2':
-                        pokemon.get('move_2'),
-                    'height':
-                        pokemon.get('height_m'),
-                    'weight':
-                        pokemon.get('weight_kg'),
-                    'stamina':
-                        pokemon.get('stamina'),
-                    'stamina_max':
-                        pokemon.get('stamina_max'),
-                    'cp_multiplier':
-                        pokemon.get('cp_multiplier'),
-                    'additional_cp_multiplier':
-                        pokemon.get('additional_cp_multiplier', 0),
-                    'iv_defense':
-                        pokemon.get('individual_defense', 0),
-                    'iv_stamina':
-                        pokemon.get('individual_stamina', 0),
-                    'iv_attack':
-                        pokemon.get('individual_attack', 0),
-                    'trainer_name':
-                        member['trainer_public_profile']['name'],
+                wh_pokemon = gym_pokemon[i].copy()
+                del wh_pokemon['last_seen']
+                wh_pokemon.update({
+                    'cp_decayed':
+                        member['motivated_pokemon']['cp_now'],
                     'trainer_level':
                         member['trainer_public_profile']['level'],
+                    'deployment_time': calendar.timegm(
+                        gym_members[i]['deployment_time'].timetuple())
                 })
+                webhook_data['pokemon'].append(wh_pokemon)
 
             i += 1
         if args.webhooks:
@@ -2556,7 +2660,7 @@ def db_updater(args, q, db):
                     flaskDb.connect_db()
                     break
                 except Exception as e:
-                    log.warning('%s... Retrying...', repr(e))
+                    log.exception('%s... Retrying...', repr(e))
                     time.sleep(5)
 
             # Loop the queue.
@@ -2689,7 +2793,7 @@ def bulk_upsert(cls, data, db):
                 has_unrecoverable = filter(
                     lambda x: x in str(e), unrecoverable)
                 if has_unrecoverable:
-                    log.warning('%s. Data is:', repr(e))
+                    log.exception('%s. Data is:', repr(e))
                     log.warning(data.items())
                 else:
                     log.warning('%s... Retrying...', repr(e))
@@ -2701,7 +2805,7 @@ def bulk_upsert(cls, data, db):
 
 def create_tables(db):
     db.connect()
-    tables = [Pokemon, Pokestop, Gym, ScannedLocation, GymDetails,
+    tables = [Pokemon, Pokestop, Gym, Raid, ScannedLocation, GymDetails,
               GymMember, GymPokemon, Trainer, MainWorker, WorkerStatus,
               SpawnPoint, ScanSpawnPoint, SpawnpointDetectionData,
               Token, LocationAltitude, PlayerLocale, HashKeys]
@@ -2715,7 +2819,7 @@ def create_tables(db):
 
 
 def drop_tables(db):
-    tables = [Pokemon, Pokestop, Gym, ScannedLocation, Versions,
+    tables = [Pokemon, Pokestop, Gym, Raid, ScannedLocation, Versions,
               GymDetails, GymMember, GymPokemon, Trainer, MainWorker,
               WorkerStatus, SpawnPoint, ScanSpawnPoint,
               SpawnpointDetectionData, LocationAltitude, PlayerLocale,
@@ -3015,9 +3119,22 @@ def database_migrate(db, old_ver):
         migrate(
             migrator.add_column('workerstatus', 'missed',
                                 IntegerField(null=True)),
-
             migrator.add_column('workerstatus', 'rares',
-                            IntegerField(null=True))
+                                IntegerField(null=True))
         )
+
+    if old_ver < 21:
+        migrate(
+            migrator.drop_column('gym', 'gym_points'),
+            migrator.add_column('gym', 'slots_available',
+                                SmallIntegerField(null=False, default=0)),
+            migrator.add_column('gymmember', 'cp_decayed',
+                                SmallIntegerField(null=False, default=0)),
+            migrator.add_column('gymmember', 'deployment_time',
+                                DateTimeField(
+                                    null=False, default=datetime.utcnow())),
+            migrator.add_column('gym', 'total_cp',
+                                SmallIntegerField(null=False, default=0)))
+
     # Always log that we're done.
     log.info('Schema upgrade complete.')
