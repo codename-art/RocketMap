@@ -501,6 +501,7 @@ class Gym(BaseModel):
                            GymPokemon.cp.alias('pokemon_cp'),
                            GymMember.cp_decayed,
                            GymMember.deployment_time,
+                           GymMember.last_scanned,
                            GymPokemon.pokemon_id,
                            Trainer.name.alias('trainer_name'),
                            Trainer.level.alias('trainer_level'))
@@ -575,6 +576,7 @@ class Gym(BaseModel):
                    .select(GymPokemon.cp.alias('pokemon_cp'),
                            GymMember.cp_decayed,
                            GymMember.deployment_time,
+                           GymMember.last_scanned,
                            GymPokemon.pokemon_id,
                            GymPokemon.pokemon_uid,
                            GymPokemon.move_1,
@@ -1201,8 +1203,8 @@ class SpawnPoint(BaseModel):
             'kind': 'hhhs',
             'links': '????',
             'missed_count': 0,
-            'latest_seen': None,
-            'earliest_unseen': None
+            'latest_seen': 0,
+            'earliest_unseen': 0
 
         }
 
@@ -1865,10 +1867,6 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
     level = account['level']
     # Use separate level indicator for our L30 encounters.
     encounter_level = level
-
-    # Helping out the GC.
-    if 'GET_INVENTORY' in map_dict['responses']:
-        del map_dict['responses']['GET_INVENTORY']
 
     for i, cell in enumerate(cells):
         # If we have map responses then use the time from the request
