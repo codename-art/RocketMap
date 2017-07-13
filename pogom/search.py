@@ -1185,7 +1185,7 @@ def upsertKeys(keys, key_scheduler, db_updates_queue):
         hashkeys[key]['key'] = key
         hashkeys[key]['peak'] = max(key_instance['peak'],
                                     HashKeys.getStoredPeak(key))
-    db_updates_queue.put((HashKeys, hashkeys))
+    # db_updates_queue.put((HashKeys, hashkeys))
 
 
 def map_request(api, account, position, no_jitter=False):
