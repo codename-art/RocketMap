@@ -189,14 +189,15 @@ def status_printer(threadStatus, search_items_queue_array, db_updates_queue,
                             str(threadStatus[item]['proxy_display'])))
 
             # How pretty.
-            status = '{:10} | {:5} | {:' + str(userlen) + '} | {:' + str(
-                proxylen) + '} | {:7} | {:6} | {:5} | {:7} | {:8} | {:10}'
+            status = ('{:10} | {:5} | {:' + str(userlen) + '} | {:' + str(
+                proxylen) + '} | {:7} | {:6} | {:5} | {:7} | {:6} | {:6} | {:8} ' +
+                '| {:10}')
 
             # Print the worker status.
             status_text.append(status.format('Worker ID', 'Start', 'User',
                                              'Proxy', 'Success', 'Failed',
-                                             'Empty', 'Skipped', 'Captchas',
-                                             'Message'))
+                                             'Empty', 'Skipped', 'Missed',
+                                             'Rares', 'Captchas', 'Message'))
             for item in sorted(threadStatus):
                 if(threadStatus[item]['type'] == 'Worker'):
                     current_line += 1
@@ -218,6 +219,8 @@ def status_printer(threadStatus, search_items_queue_array, db_updates_queue,
                         threadStatus[item]['fail'],
                         threadStatus[item]['noitems'],
                         threadStatus[item]['skip'],
+                        threadStatus[item]['missed'],
+                        threadStatus[item]['rares'],
                         threadStatus[item]['captcha'],
                         threadStatus[item]['message']))
 
@@ -465,6 +468,8 @@ def search_overseer_thread(args, new_location_queue, control_flags, heartb,
             'fail': 0,
             'noitems': 0,
             'skip': 0,
+            'missed': 0,
+            'rares': 0,
             'captcha': 0,
             'username': '',
             'proxy_display': proxy_display,
@@ -786,6 +791,7 @@ def search_worker_thread(args, account_queue, account_sets,
                 account['username'], scheduler.scan_location))
             status['message'] = 'Switching to account {}.'.format(
                 account['username'])
+            status['account'] = account
             log.info(status['message'])
 
             # New lease of life right here.
@@ -793,6 +799,8 @@ def search_worker_thread(args, account_queue, account_sets,
             status['success'] = 0
             status['noitems'] = 0
             status['skip'] = 0
+            status['missed'] = 0
+            status['rares'] = 0
             status['captcha'] = 0
 
             stagger_thread(args)
@@ -843,6 +851,21 @@ def search_worker_thread(args, account_queue, account_sets,
                     account_failures.append({'account': account,
                                              'last_fail_time': now(),
                                              'reason': 'empty scans'})
+                    # Exit this loop to get a new account and have the API
+                    # recreated.
+                    break
+
+
+                if status['missed'] > args.max_missed:
+                    status['message'] = (
+                        'Account {} miss pokemon for more than {} ' +
+                        'scans; possibly shadowbanned. Switching ' +
+                        'accounts...').format(account['username'],
+                                              args.max_missed)
+                    log.warning(status['message'])
+                    account_failures.append({'account': account,
+                                             'last_fail_time': now(),
+                                             'reason': 'missed pokemon'})
                     # Exit this loop to get a new account and have the API
                     # recreated.
                     break
