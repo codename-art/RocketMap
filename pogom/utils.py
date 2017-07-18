@@ -701,7 +701,7 @@ def get_args():
             with open(args.high_lvl_accounts, 'r') as accs:
                 for line in accs:
                     # Make sure it's not an empty line.
-                    if not line.strip():
+                    if not line.strip() or line.startswith('#'):
                         continue
 
                     line = line.split(',')
