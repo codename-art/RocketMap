@@ -182,9 +182,6 @@ class Pogom(Flask):
 
         map_lat = self.current_location[0]
         map_lng = self.current_location[1]
-        if request.args:
-            map_lat = request.args.get('lat') or self.current_location[0]
-            map_lng = request.args.get('lon') or self.current_location[1]
 
         return render_template('map.html',
                                lat=map_lat,
@@ -401,6 +398,8 @@ class Pogom(Flask):
         args = get_args()
         if args.fixed_location:
             return 'Location changes are turned off', 403
+        lat = None
+        lon = None
         # Part of query string.
         if request.args:
             lat = request.args.get('lat', type=float)
