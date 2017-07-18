@@ -65,7 +65,7 @@ def scout_init():
 
     # Processing proxies if set (load from file, check and overwrite old
     # args.proxy with new working list)
-    args.proxy = check_proxies(args)
+    #args.proxy = check_proxies(args)
 
     # Run periodical proxy refresh thread
     if (args.proxy_file is not None) and (args.proxy_refresh > 0):
