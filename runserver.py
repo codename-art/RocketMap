@@ -330,9 +330,12 @@ def main():
         t.start()
 
     if args.scout:
+
         # Processing proxies if set (load from file, check and overwrite old
-        # args.proxy with new working list)
-        args.proxy = check_proxies(args, args.proxy)
+        # args.proxy with new working list).
+        args.proxy = load_proxies(args)
+        if args.proxy and not args.proxy_skip_check:
+            args.proxy = check_proxies(args, args.proxy)
 
         # Run periodical proxy refresh thread
         if (args.proxy_file is not None) and (args.proxy_refresh > 0):
