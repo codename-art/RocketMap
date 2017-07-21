@@ -614,7 +614,7 @@ function gymLabel(gym, includeMembers = true) {
     }
 
     if ((isUpcomingRaid || isRaidStarted) && isRaidFilterOn && isGymSatisfiesRaidMinMaxFilter(raid)) {
-        const raidColor = ['252,112,176', '255,158,22']
+        const raidColor = ['252,112,176', '255,158,22', '184,165,221']
         const levelStr = '★'.repeat(raid['level'])
 
         if (isRaidStarted) {
