@@ -614,14 +614,19 @@ function gymLabel(gym, includeMembers = true) {
     }
 
     if ((isUpcomingRaid || isRaidStarted) && isRaidFilterOn && isGymSatisfiesRaidMinMaxFilter(raid)) {
-        const raidColor = ['252,112,176', '255,158,22']
+        const raidColor = ['252,112,176', '255,158,22', '184,165,221']
         const levelStr = '★'.repeat(raid['level'])
 
         if (isRaidStarted) {
             // Set default image.
             image = `
-                <img class='gym sprite' src='static/images/raid/${gymTypes[gym.team_id]}_unknown.png'>
-                ${raidStr}
+                <img class='gym sprite' src='static/images/raid/${gymTypes[gym.team_id]}_${raid.level}_unknown.png'>
+                <div class='raid'>
+                <span style='color:rgb(${raidColor[Math.floor((raid.level - 1) / 2)]})'>
+                ${levelStr}
+                </span>
+                <span class='raid countdown label-countdown' disappears-at='${raid.end}'></span> left
+                </div>
             `
             // Use Pokémon-specific image if we have one.
             if (raid.pokemon_id !== null && pokemonWithImages.indexOf(raid.pokemon_id) !== -1) {
@@ -1044,7 +1049,7 @@ function updateGymMarker(item, marker) {
         135, 136, 143, 144, 145, 146, 153, 156, 159, 248, 249
     ]
     if (item.raid !== null && isOngoingRaid(item.raid) && Store.get('showRaids') && raidLevel >= Store.get('showRaidMinLevel') && raidLevel <= Store.get('showRaidMaxLevel')) {
-        let markerImage = 'static/images/raid/' + gymTypes[item.team_id] + '_unknown.png'
+        let markerImage = 'static/images/raid/' + gymTypes[item.team_id] + '_' + item.raid.level + '_unknown.png'
         if (pokemonWithImages.indexOf(item.raid.pokemon_id) !== -1) {
             markerImage = 'static/images/raid/' + gymTypes[item.team_id] + '_' + item['raid']['pokemon_id'] + '.png'
         }
@@ -1530,7 +1535,7 @@ function processGyms(i, item) {
     }
 
     if (!Store.get('showGyms')) {
-        if (Store.get('showRaids') && !isValidRaid()) {
+        if (Store.get('showRaids') && !isValidRaid(item.raid)) {
             removeGymFromMap(item['gym_id'])
             return true
         }
