@@ -153,7 +153,8 @@ function initMap() { // eslint-disable-line no-unused-vars
     var clusterOptions = {
         imagePath: 'static/images/cluster/m',
         maxZoom: Store.get('maxClusterZoomLevel'),
-        zoomOnClick: false
+        zoomOnClick: Store.get('clusterZoomOnClick'),
+        gridSize: Store.get('clusterGridSize')
     }
 
     markerCluster = new MarkerClusterer(map, [], clusterOptions)
@@ -232,9 +233,12 @@ function initMap() { // eslint-disable-line no-unused-vars
         // Don't redraw constantly even if the user scrolls multiple times,
         // just add it on a timer.
         redrawTimeout = setTimeout(function () {
-            redrawPokemon(mapData.pokemons, true)
-            redrawPokemon(mapData.lurePokemons, false)
-        }, 600)
+            redrawPokemon(mapData.pokemons)
+            redrawPokemon(mapData.lurePokemons)
+
+            // We're done processing the list. Repaint.
+            markerCluster.repaint()
+        }, 500)
     })
 
     searchMarker = createSearchMarker()
@@ -410,22 +414,28 @@ function initSidebar() {
     $('#sound-switch').prop('checked', Store.get('playSound'))
     $('#pokemoncries').toggle(Store.get('playSound'))
     $('#cries-switch').prop('checked', Store.get('playCries'))
-    var searchBox = new google.maps.places.Autocomplete(document.getElementById('next-location'))
-    $('#next-location').css('background-color', $('#geoloc-switch').prop('checked') ? '#e0e0e0' : '#ffffff')
+
+    // Only create the Autocomplete element if it's enabled in template.
+    var elSearchBox = document.getElementById('next-location')
+
+    if (elSearchBox) {
+        var searchBox = new google.maps.places.Autocomplete(elSearchBox)
+        $(elSearchBox).css('background-color', $('#geoloc-switch').prop('checked') ? '#e0e0e0' : '#ffffff')
+
+        searchBox.addListener('place_changed', function () {
+            var place = searchBox.getPlace()
+
+            if (!place.geometry) return
+
+            var loc = place.geometry.location
+            changeLocation(loc.lat(), loc.lng())
+        })
+    }
 
     if ($('#search-switch').length) {
         updateSearchStatus()
         setInterval(updateSearchStatus, 5000)
     }
-
-    searchBox.addListener('place_changed', function () {
-        var place = searchBox.getPlace()
-
-        if (!place.geometry) return
-
-        var loc = place.geometry.location
-        changeLocation(loc.lat(), loc.lng())
-    })
 
     $('#pokemon-icon-size').val(Store.get('iconSizeModifier'))
 }
@@ -976,7 +986,7 @@ function getNotifyText(item) {
     var replace = [((iv) ? iv.toFixed(1) : ''), item['pokemon_name'], item['individual_attack'],
         item['individual_defense'], item['individual_stamina']]
     var ntitle = repArray(((iv) ? notifyIvTitle : notifyNoIvTitle), find, replace)
-    var dist = moment().format('HH:mm:ss')
+    var dist = moment(item['disappear_time']).format('HH:mm:ss')
     var until = getTimeUntil(item['disappear_time'])
     var udist = (until.hour > 0) ? until.hour + ':' : ''
     udist += lpad(until.min, 2, 0) + 'm' + lpad(until.sec, 2, 0) + 's'
@@ -1354,6 +1364,8 @@ function clearStaleMarkers() {
             oldPokeMarkers.push(oldMarker)
             oldMarker.setMap(null)
             delete mapData.pokemons[key]
+            // Overwrite method to avoid all timing issues with libraries.
+            oldMarker.setMap = function () {}
         }
     })
 
@@ -1513,10 +1525,31 @@ function processPokemons(pokemon) {
         return false // In case the checkbox was unchecked in the meantime.
     }
 
+    // Process Pokémon per chunk of total so we don't overwhelm the client and
+    // allow redraws in between. We enable redraw in addMarkers, which doesn't
+    // repaint/reset all previous markers but only draws new ones.
+    processPokemonChunked(pokemon, Store.get('processPokemonChunkSize'))
+}
+
+function processPokemonChunked(pokemon, chunkSize) {
+    // Early skip if we have nothing to process.
+    if (typeof pokemon === 'undefined' || pokemon.length === 0) {
+        return
+    }
+
     const oldMarkers = []
     const newMarkers = []
+    const chunk = pokemon.splice(-1 * chunkSize)
 
-    $.each(pokemon, function (i, poke) {
+    $.each(chunk, function (i, poke) {
+        // Early skip if we've already stored this spawn or if it's expiring
+        // too soon.
+        const encounterId = poke.encounter_id
+        const expiringSoon = (poke.disappear_time < (Date.now() + 3000))
+        if (mapData.pokemons.hasOwnProperty(encounterId) || expiringSoon) {
+            return
+        }
+
         const markers = processPokemon(poke)
         const newMarker = markers[0]
         const oldMarker = markers[1]
@@ -1544,7 +1577,14 @@ function processPokemons(pokemon) {
     // Disable instant redraw, we'll repaint ourselves after we've added the
     // new markers.
     markerCluster.removeMarkers(oldMarkers, true)
-    markerCluster.addMarkers(newMarkers, true)
+    markerCluster.addMarkers(newMarkers, false)
+
+    // Any left?
+    if (pokemon.length > 0) {
+        setTimeout(function () {
+            processPokemonChunked(pokemon, chunkSize)
+        }, Store.get('processPokemonIntervalMs'))
+    }
 }
 
 function processPokemon(item) {
@@ -1832,7 +1872,7 @@ function updateMap() {
     })
 }
 
-function redrawPokemon(pokemonList, useMarkerCluster) {
+function redrawPokemon(pokemonList) {
     $.each(pokemonList, function (key, value) {
         var item = pokemonList[key]
 
@@ -1840,12 +1880,6 @@ function redrawPokemon(pokemonList, useMarkerCluster) {
             updatePokemonMarker(item, map)
         }
     })
-
-    // We're done processing the list. Redraw.
-    if (useMarkerCluster) {
-        markerCluster.resetViewport()
-        markerCluster.redraw()
-    }
 }
 
 var updateLabelDiffTime = function () {
@@ -2299,8 +2333,11 @@ $(function () {
 
     $selectIconSize.on('change', function () {
         Store.set('iconSizeModifier', this.value)
-        redrawPokemon(mapData.pokemons, true)
-        redrawPokemon(mapData.lurePokemons, false)
+        redrawPokemon(mapData.pokemons)
+        redrawPokemon(mapData.lurePokemons)
+
+        // We're done processing the list. Repaint.
+        markerCluster.repaint()
     })
 
     $switchOpenGymsOnly = $('#open-gyms-only-switch')
@@ -2643,7 +2680,8 @@ $(function () {
                             }
                         }
                     })
-                    if (dType === 'pokemons') {
+                    // If the type was "pokemons".
+                    if (oldPokeMarkers.length > 0) {
                         markerCluster.removeMarkers(oldPokeMarkers)
                     }
                     if (storageKey !== 'showRanges') data[dType] = {}
@@ -2693,6 +2731,7 @@ $(function () {
     })
     $('#pokemon-switch').change(function () {
         buildSwitchChangeListener(mapData, ['pokemons'], 'showPokemon').bind(this)()
+        markerCluster.repaint()
     })
     $('#scanned-switch').change(function () {
         buildSwitchChangeListener(mapData, ['scanned'], 'showScanned').bind(this)()
