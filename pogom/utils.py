@@ -442,7 +442,7 @@ def get_args():
     parser.add_argument('-slt', '--stats-log-timer',
                         help='In log view, list per hr stats every X seconds',
                         type=int, default=0)
-    parser.add_argument('-sn', '--status-name', default=os.getpid(),
+    parser.add_argument('-sn', '--status-name', default=str(os.getpid()),
                         help=('Enable status page database update using ' +
                               'STATUS_NAME as main worker name.'))
     parser.add_argument('-spp', '--status-page-password', default=None,
@@ -471,7 +471,7 @@ def get_args():
                         help=('Enables the use of X-FORWARDED-FOR headers ' +
                               'to identify the IP of clients connecting ' +
                               'through these trusted proxies.'))
-    parser.add_argument('--api-version', default='0.69.0',
+    parser.add_argument('--api-version', default='0.69.1',
                         help=('API version currently in use.'))
     verbose = parser.add_mutually_exclusive_group()
     verbose.add_argument('-v',
@@ -1058,11 +1058,13 @@ def gmaps_reverse_geolocate(gmaps_key, locale, location):
 # speed up requests to the same host, as it'll re-use the underlying TCP
 # connection.
 def get_async_requests_session(num_retries, backoff_factor, pool_size,
-                               status_forcelist=[500, 502, 503, 504]):
+                               status_forcelist=None):
     # Use requests & urllib3 to auto-retry.
     # If the backoff_factor is 0.1, then sleep() will sleep for [0.1s, 0.2s,
     # 0.4s, ...] between retries. It will also force a retry if the status
     # code returned is in status_forcelist.
+    if status_forcelist is None:
+        status_forcelist = [500, 502, 503, 504]
     session = FuturesSession(max_workers=pool_size)
 
     # If any regular response is generated, no retry is done. Without using
