@@ -868,7 +868,7 @@ class ScannedLocation(BaseModel):
                         abs(sp['longitude'] - scan['loc'][1]) > deg_at_lat):
                     continue
                 if in_radius((sp['latitude'], sp['longitude']),
-                             scan['loc'], distance):
+                             scan['loc'], distance * 1000):
                     scan_spawn_point[cell + sp['id']] = {
                         'spawnpoint': sp['id'],
                         'scannedlocation': cell}
@@ -2130,7 +2130,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                     wh_pokestop = pokestops[f.id].copy()
                     wh_pokestop.update({
                         'pokestop_id': b64encode(str(f.id)),
-                        'last_modified_time': f.last_modified_timestamp_ms,
+                        'last_modified': f.last_modified_timestamp_ms,
                         'lure_expiration': l_e,
                     })
                     wh_update_queue.put(('pokestop', wh_pokestop))
