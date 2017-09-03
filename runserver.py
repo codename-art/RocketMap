@@ -362,8 +362,6 @@ def main():
             log.info('Periodical proxies refresh disabled.')
         scout_init()
 
-    config['ROOT_PATH'] = app.root_path
-    config['GMAPS_KEY'] = args.gmaps_key
 
     if not args.only_server:
         # Check if we are able to scan.
