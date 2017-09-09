@@ -17,7 +17,6 @@ from flask_cors import CORS
 from flask_cache_bust import init_cache_busting
 
 from pogom.app import Pogom
-from pogom.scout import scout_init
 from pogom.utils import get_args, now, gmaps_reverse_geolocate
 from pogom.altitude import get_gmaps_altitude
 
@@ -337,23 +336,7 @@ def main():
             t.daemon = True
             t.start()
 
-    if args.scout:
 
-        # Processing proxies if set (load from file, check and overwrite old
-        # args.proxy with new working list).
-        args.proxy = load_proxies(args)
-        if args.proxy and not args.proxy_skip_check:
-            args.proxy = check_proxies(args, args.proxy)
-
-        # Run periodical proxy refresh thread
-        if (args.proxy_file is not None) and (args.proxy_refresh > 0):
-            t = Thread(target=proxies_refresher,
-                       name='proxy-refresh', args=(args,))
-            t.daemon = True
-            t.start()
-        else:
-            log.info('Periodical proxies refresh disabled.')
-        scout_init()
 
 
     if not args.only_server:

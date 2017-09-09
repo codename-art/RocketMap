@@ -499,20 +499,6 @@ def get_args():
     parser.add_argument('--log-path',
                         help=('Defines directory to save log files to.'),
                         default='logs/')
-    parser.add_argument('-sco', '--scout', default=False, action='store_true',
-                        help='Enable CP and IV scouting')
-    parser.add_argument('-saa', '--scout-account-auth', default="ptc",
-                        help='Scout auth')
-    parser.add_argument('-sau', '--scout-account-username', default=None,
-                        help='Scout username')
-    parser.add_argument('-sap', '--scout-account-password', default=None,
-                        help='Scout password')
-    parser.add_argument('-scd', '--scout-cooldown-delay',
-                        help='Number of seconds to wait before scout may be used again.',
-                        type=int, default=60)
-    parser.add_argument('-saf', '--scout-accounts-file',
-                        default='', help='File containing a list of '
-                                         'accounts >= lvl 30 for scouting')
     parser.set_defaults(DEBUG=False)
 
     args = parser.parse_args()

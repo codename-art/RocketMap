@@ -11,7 +11,6 @@ from flask_compress import Compress
 from datetime import datetime
 from s2sphere import LatLng
 from pogom.utils import get_args
-from pogom.scout import perform_scout
 from datetime import timedelta
 from collections import OrderedDict
 from bisect import bisect_left
@@ -67,12 +66,7 @@ class Pogom(Flask):
         self.route("/robots.txt", methods=['GET'])(self.render_robots_txt)
         self.route("/serviceWorker.min.js", methods=['GET'])(
             self.render_service_worker_js)
-        self.route("/scout", methods=['GET'])(self.get_scout_data)
 
-    def get_scout_data(self):
-        encounterId = request.args.get('encounter_id')
-        p = Pokemon.get(Pokemon.encounter_id == encounterId)
-        return jsonify(perform_scout(p))
 
     def render_robots_txt(self):
         return render_template('robots.txt')
