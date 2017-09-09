@@ -5,7 +5,7 @@ import calendar
 import logging
 
 from flask import Flask, abort, jsonify, render_template, request,\
-    make_response
+    make_response, send_from_directory
 from flask.json import JSONEncoder
 from flask_compress import Compress
 from datetime import datetime
@@ -16,7 +16,6 @@ from datetime import timedelta
 from collections import OrderedDict
 from bisect import bisect_left
 
-from . import config
 from .models import (Pokemon, Gym, Pokestop, ScannedLocation,
                      MainWorker, WorkerStatus, Token, HashKeys,
                      SpawnPoint)
@@ -66,6 +65,8 @@ class Pogom(Flask):
         self.route("/submit_token", methods=['POST'])(self.submit_token)
         self.route("/get_stats", methods=['GET'])(self.get_account_stats)
         self.route("/robots.txt", methods=['GET'])(self.render_robots_txt)
+        self.route("/serviceWorker.min.js", methods=['GET'])(
+            self.render_service_worker_js)
         self.route("/scout", methods=['GET'])(self.get_scout_data)
 
     def get_scout_data(self):
@@ -76,6 +77,9 @@ class Pogom(Flask):
     def render_robots_txt(self):
         return render_template('robots.txt')
 
+    def render_service_worker_js(self):
+        return send_from_directory('static/dist/js', 'serviceWorker.min.js')
+
     def get_bookmarklet(self):
         args = get_args()
         return render_template('bookmarklet.html',
@@ -83,9 +87,14 @@ class Pogom(Flask):
 
     def render_inject_js(self):
         args = get_args()
-        return render_template('inject.js',
-                               domain=args.manual_captcha_domain,
-                               timer=args.manual_captcha_refresh)
+        src = render_template('inject.js',
+                              domain=args.manual_captcha_domain,
+                              timer=args.manual_captcha_refresh)
+
+        response = make_response(src)
+        response.headers['Content-Type'] = 'application/javascript'
+
+        return response
 
     def submit_token(self):
         response = 'error'
@@ -189,8 +198,8 @@ class Pogom(Flask):
         return render_template('map.html',
                                lat=map_lat,
                                lng=map_lng,
-                               gmaps_key=config['GMAPS_KEY'],
-                               lang=config['LOCALE'],
+                               gmaps_key=args.gmaps_key,
+                               lang=args.locale,
                                show=visibility_flags
                                )
 
@@ -564,7 +573,7 @@ class Pogom(Flask):
         return render_template('statistics.html',
                                lat=self.current_location[0],
                                lng=self.current_location[1],
-                               gmaps_key=config['GMAPS_KEY'],
+                               gmaps_key=args.gmaps_key,
                                valid_input=self.get_valid_stat_input(),
                                show=visibility_flags
                                )

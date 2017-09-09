@@ -16,7 +16,6 @@ from queue import Queue
 from flask_cors import CORS
 from flask_cache_bust import init_cache_busting
 
-from pogom import config
 from pogom.app import Pogom
 from pogom.scout import scout_init
 from pogom.utils import get_args, now, gmaps_reverse_geolocate
@@ -50,7 +49,7 @@ stdout_hdlr = logging.StreamHandler(sys.stdout)
 stdout_hdlr.setFormatter(formatter)
 log_filter = LogFilter(logging.WARNING)
 stdout_hdlr.addFilter(log_filter)
-stdout_hdlr.setLevel(logging.DEBUG)
+stdout_hdlr.setLevel(5)
 
 # Redirect messages equal or higher than WARNING to stderr
 stderr_hdlr = logging.StreamHandler(sys.stderr)
@@ -203,11 +202,6 @@ def main():
 
     set_log_and_verbosity(log)
 
-    config['parse_pokemon'] = not args.no_pokemon
-    config['parse_pokestops'] = not args.no_pokestops
-    config['parse_gyms'] = not args.no_gyms
-    config['parse_raids'] = not args.no_raids
-
     # Let's not forget to run Grunt / Only needed when running with webserver.
     if not args.no_server and not validate_assets(args):
         sys.exit(1)
@@ -255,9 +249,6 @@ def main():
     if args.encounter:
         log.info('Encountering pokemon enabled.')
 
-    config['LOCALE'] = args.locale
-    config['CHINA'] = args.china
-
     app = None
     if not args.no_server and not args.clear_db:
         app = Pogom(__name__,
@@ -285,6 +276,8 @@ def main():
         log.info(
             'Drop and recreate is complete. Now remove -cd and restart.')
         sys.exit()
+
+    args.root_path = os.path.dirname(os.path.abspath(__file__))
 
     # Control the search status (running or not) across threads.
     control_flags = {
@@ -432,8 +425,6 @@ def main():
         while search_thread.is_alive():
             time.sleep(60)
     else:
-        config['ROOT_PATH'] = app.root_path
-        config['GMAPS_KEY'] = args.gmaps_key
 
         if args.cors:
             CORS(app)
@@ -487,17 +478,21 @@ def set_log_and_verbosity(log):
     logging.getLogger('pgoapi.pgoapi').setLevel(logging.WARNING)
     logging.getLogger('pgoapi.rpc_api').setLevel(logging.INFO)
     logging.getLogger('werkzeug').setLevel(logging.ERROR)
+    logging.getLogger('pogom.apiRequests').setLevel(logging.INFO)
 
     # Turn these back up if debugging.
-    if args.verbose == 2:
+    if args.verbose >= 2:
         logging.getLogger('pgoapi').setLevel(logging.DEBUG)
         logging.getLogger('pgoapi.pgoapi').setLevel(logging.DEBUG)
         logging.getLogger('requests').setLevel(logging.DEBUG)
-    elif args.verbose >= 3:
+
+    if args.verbose >= 3:
         logging.getLogger('peewee').setLevel(logging.DEBUG)
         logging.getLogger('rpc_api').setLevel(logging.DEBUG)
         logging.getLogger('pgoapi.rpc_api').setLevel(logging.DEBUG)
         logging.getLogger('werkzeug').setLevel(logging.DEBUG)
+        logging.addLevelName(5, 'TRACE')
+        logging.getLogger('pogom.apiRequests').setLevel(5)
 
     # Web access logs.
     if args.access_logs:
