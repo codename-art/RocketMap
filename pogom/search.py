@@ -28,6 +28,7 @@ import requests
 import schedulers
 import terminalsize
 import timeit
+import threading
 
 from datetime import datetime
 from threading import Thread, Lock
@@ -37,23 +38,22 @@ from collections import deque
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 from distutils.version import StrictVersion
+from cachetools import TTLCache
 
-from pgoapi.utilities import f2i
-from pgoapi import utilities as util
-from pgoapi.hash_server import (HashServer, BadHashRequestException,
-                                HashingOfflineException)
+from pgoapi.hash_server import HashServer
 from .models import (parse_map, GymDetails, parse_gyms, MainWorker,
                      WorkerStatus, HashKeys)
-from .utils import now, clear_dict_response, distance
-from .transform import get_new_coords, jitter_location
-from .account import (setup_api, check_login, AccountSet,
-                      parse_new_timestamp_ms)
+from .utils import now, distance
+from .transform import get_new_coords
+from .account import setup_api, check_login, AccountSet
 from .captcha import captcha_overseer_thread, handle_captcha
 from .proxy import get_new_proxy
+from .apiRequests import gym_get_info, get_map_objects as gmo
 
 log = logging.getLogger(__name__)
 
 loginDelayLock = Lock()
+gym_cache_lock = threading.Lock()
 
 
 # Thread to handle user input.
@@ -338,6 +338,10 @@ def search_overseer_thread(args, new_location_queue, control_flags, heartb,
     api_check_time = 0
     hashkeys_last_upsert = timeit.default_timer()
     hashkeys_upsert_min_delay = 5.0
+    gym_cache = None
+
+    if args.gym_info:
+        gym_cache = TTLCache(maxsize=10000, ttl=60)
 
     '''
     Create a queue of accounts for workers to pull from. When a worker has
@@ -452,14 +456,14 @@ def search_overseer_thread(args, new_location_queue, control_flags, heartb,
             'proxy_display': proxy_display,
             'proxy_url': proxy_url,
         }
+        argset = (
+            args, account_queue, account_sets, account_failures,
+            account_captchas, control_flags, threadStatus[workerId],
+            db_updates_queue, wh_queue, scheduler, key_scheduler, gym_cache)
 
         t = Thread(target=search_worker_thread,
                    name='search-worker-{}'.format(i),
-                   args=(args, account_queue, account_sets,
-                         account_failures, account_captchas,
-                         control_flags, threadStatus[workerId],
-                         db_updates_queue, wh_queue,
-                         scheduler, key_scheduler))
+                   args=argset)
         t.daemon = True
         t.start()
 
@@ -478,8 +482,8 @@ def search_overseer_thread(args, new_location_queue, control_flags, heartb,
     # The real work starts here but will halt when any control flag is set.
     while True:
         if (args.hash_key is not None and
-                (hashkeys_last_upsert + hashkeys_upsert_min_delay)
-                <= timeit.default_timer()):
+            (hashkeys_last_upsert + hashkeys_upsert_min_delay) <=
+                timeit.default_timer()):
             upsertKeys(args.hash_key, key_scheduler, db_updates_queue)
             hashkeys_last_upsert = timeit.default_timer()
 
@@ -752,10 +756,9 @@ def generate_hive_locations(current_location, step_distance,
     return results
 
 
-def search_worker_thread(args, account_queue, account_sets,
-                         account_failures, account_captchas,
-                         control_flags, status, dbq, whq,
-                         scheduler, key_scheduler):
+def search_worker_thread(args, account_queue, account_sets, account_failures,
+                         account_captchas, control_flags, status, dbq, whq,
+                         scheduler, key_scheduler, gym_cache):
 
     log.debug('Search worker thread starting...')
 
@@ -784,22 +787,38 @@ def search_worker_thread(args, account_queue, account_sets,
             log.info(status['message'])
 
             # Get an account.
+            stagger_thread(args)
             account = account_queue.get()
             # Reset account statistics tracked per loop.
-            status.update(WorkerStatus.get_worker(
-                account['username'], scheduler.scan_location))
-            status['message'] = 'Switching to account {}.'.format(
-                account['username'])
-            log.info(status['message'])
-
+            prevStatus = WorkerStatus.get_worker(account['username'])
+            if prevStatus:
+                status.update(prevStatus)
+            else:
+                status.update({
+                    'username': account['username'],
+                    'last_modified': datetime.utcnow(),
+                    'last_scan_date': datetime.utcnow(),
+                    'latitude': None,
+                    'longitude': None
+                })
             # New lease of life right here.
-            status['fail'] = 0
-            status['success'] = 0
-            status['noitems'] = 0
-            status['skip'] = 0
-            status['captcha'] = 0
-
-            stagger_thread(args)
+            status.update({
+                'fail':
+                    0,
+                'success':
+                    0,
+                'noitems':
+                    0,
+                'skip':
+                    0,
+                'captcha':
+                    0,
+                'active':
+                    True,
+                'message':
+                    'Switching to account {}.'.format(account['username'])
+            })
+            log.info(status['message'])
 
             # Sleep when consecutive_fails reaches max_failures, overall fails
             # for stat purposes.
@@ -813,7 +832,6 @@ def search_worker_thread(args, account_queue, account_sets,
 
             # The forever loop for the searches.
             while True:
-                status['active'] = True
                 while is_paused(control_flags):
                     status['message'] = 'Scanning paused.'
                     time.sleep(2)
@@ -949,8 +967,8 @@ def search_worker_thread(args, account_queue, account_sets,
 
                 # Make the actual request.
                 scan_date = datetime.utcnow()
-                response_dict = map_request(api, account, step_location,
-                                            args.no_jitter)
+                response_dict = gmo(
+                    api, account, step_location, args.no_jitter)
                 status['last_scan_date'] = datetime.utcnow()
 
                 # Record the time and the place that the worker made the
@@ -979,9 +997,8 @@ def search_worker_thread(args, account_queue, account_sets,
                         # Make another request for the same location
                         # since the previous one was captcha'd.
                         scan_date = datetime.utcnow()
-                        response_dict = map_request(api, account,
-                                                    step_location,
-                                                    args.no_jitter)
+                        response_dict = gmo(
+                            api, account, step_location, args.no_jitter)
                     elif captcha is not None:
                         account_queue.task_done()
                         time.sleep(3)
@@ -1025,6 +1042,18 @@ def search_worker_thread(args, account_queue, account_sets,
                     # Build a list of gyms to update.
                     gyms_to_update = {}
                     for gym in parsed['gyms'].values():
+                        with gym_cache_lock:
+                            if gym['gym_id'] in gym_cache:
+                                log.debug(
+                                    ('Skipping update of gym @ %f/%f, ' +
+                                     'already in progress.'),
+                                    gym['latitude'], gym['longitude'])
+                                continue
+                            else:
+                                # Set the gym as in progress it will just be
+                                # locked for 60 seconds due to TTL eviction.
+                                gym_cache[gym['gym_id']] = True
+
                         # Can only get gym details within 1km of our position.
                         gym_distance = distance(
                             step_location, [gym['latitude'], gym['longitude']])
@@ -1036,6 +1065,7 @@ def search_worker_thread(args, account_queue, account_sets,
                             except GymDetails.DoesNotExist:
                                 gyms_to_update[gym['gym_id']] = gym
                                 continue
+                            GymDetails.database().close()
 
                             # If we have a record of this gym already, check if
                             # the gym has been updated since our last update.
@@ -1066,14 +1096,22 @@ def search_worker_thread(args, account_queue, account_sets,
                         log.debug(status['message'])
 
                         for gym in gyms_to_update.values():
+                            time.sleep(random.random() + 2)
                             status['message'] = (
                                 'Getting details for gym {} of {} for ' +
                                 'location {:6f},{:6f}...').format(
-                                    current_gym, len(gyms_to_update),
-                                    step_location[0], step_location[1])
-                            time.sleep(random.random() + 2)
-                            response = gym_request(api, account, step_location,
-                                                   gym)
+                                    current_gym,
+                                    len(gyms_to_update), step_location[0],
+                                    step_location[1])
+                            log.info('Getting details for gym @ %f/%f ' +
+                                     '(%.0fm away)', gym['latitude'],
+                                     gym['longitude'],
+                                     distance(step_location, [
+                                         gym['latitude'], gym['longitude']
+                                     ]))
+
+                            response = gym_get_info(api, account,
+                                                    step_location, gym)
 
                             # Make sure the gym was in range. (Sometimes the
                             # API gets cranky about gyms that are ALMOST 1km
@@ -1148,15 +1186,14 @@ def search_worker_thread(args, account_queue, account_sets,
 
         # Catch any process exceptions, log them, and continue the thread.
         except Exception as e:
-            log.error((
-                'Exception in search_worker under account {} Exception ' +
-                'message: {}.').format(account['username'], repr(e)))
+            log.exception(
+                'Exception in search_worker under account %s.',
+                account['username'])
             status['active'] = False
             status['message'] = (
                 'Exception in search_worker using account {}. Restarting ' +
                 'with fresh account. See logs for details.').format(
                     account['username'])
-            traceback.print_exc(file=sys.stdout)
             account_failures.append({'account': account,
                                      'last_fail_time': now(),
                                      'reason': 'exception'})
@@ -1174,75 +1211,6 @@ def upsertKeys(keys, key_scheduler, db_updates_queue):
         hashkeys[key]['peak'] = max(key_instance['peak'],
                                     HashKeys.getStoredPeak(key))
     db_updates_queue.put((HashKeys, hashkeys))
-
-
-def map_request(api, account, position, no_jitter=False):
-    # Create scan_location to send to the api based off of position, because
-    # tuples aren't mutable.
-    if no_jitter:
-        # Just use the original coordinates.
-        scan_location = position
-    else:
-        # Jitter it, just a little bit.
-        scan_location = jitter_location(position)
-        log.debug('Jittered to: %f/%f/%f',
-                  scan_location[0], scan_location[1], scan_location[2])
-
-    try:
-        cell_ids = util.get_cell_ids(scan_location[0], scan_location[1])
-        timestamps = [0, ] * len(cell_ids)
-        req = api.create_request()
-        req.get_map_objects(latitude=f2i(scan_location[0]),
-                            longitude=f2i(scan_location[1]),
-                            since_timestamp_ms=timestamps,
-                            cell_id=cell_ids)
-        req.check_challenge()
-        req.get_hatched_eggs()
-        req.get_inventory(last_timestamp_ms=account['last_timestamp_ms'])
-        req.check_awarded_badges()
-        req.get_buddy_walked()
-        req.get_inbox(is_history=True)
-        response = req.call(False)
-        parse_new_timestamp_ms(account, response)
-        response = clear_dict_response(response)
-        return response
-
-    except HashingOfflineException:
-        log.error('Hashing server is unreachable, it might be offline.')
-    except BadHashRequestException:
-        log.error('Invalid or expired hashing key: %s.',
-                  api._hash_server_token)
-    except Exception as e:
-        log.exception('Exception while downloading map: %s', repr(e))
-        return False
-
-
-def gym_request(api, account, position, gym):
-    try:
-        log.info('Getting details for gym @ %f/%f (%.0fm away)',
-                 gym['latitude'], gym['longitude'],
-                 distance(position, [gym['latitude'], gym['longitude']]))
-        req = api.create_request()
-        req.gym_get_info(
-            gym_id=gym['gym_id'],
-            player_lat_degrees=f2i(position[0]),
-            player_lng_degrees=f2i(position[1]),
-            gym_lat_degrees=gym['latitude'],
-            gym_lng_degrees=gym['longitude'])
-        req.check_challenge()
-        req.get_hatched_eggs()
-        req.get_inventory(last_timestamp_ms=account['last_timestamp_ms'])
-        req.check_awarded_badges()
-        req.get_buddy_walked()
-        req.get_inbox(is_history=True)
-        response = req.call(False)
-        parse_new_timestamp_ms(account, response)
-        response = clear_dict_response(response)
-        return response
-
-    except Exception as e:
-        log.exception('Exception while downloading gym details: %s.', repr(e))
-        return False
 
 
 # Delay each thread start time so that logins occur after delay.
