@@ -36,7 +36,8 @@ def _iPokeGo(request):
     if not user_agent:
         return False
 
-    return 'ipokego' in user_agent.lower()
+    # return 'ipokego' in user_agent.lower()
+    return False
 
 
 # Fingerprints dict for easy scoping on imports.
