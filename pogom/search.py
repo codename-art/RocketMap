@@ -215,7 +215,7 @@ def status_printer(threadStatus, account_failures, logmode, hash_key,
             for account in account_failures:
                 userlen = max(userlen, len(account['account']['username']))
 
-            status = '{:' + str(userlen) + '} | {:10} | {:20}'
+            status = '{:' + str(userlen) + '} | {:10} | {:200}'
             status_text.append(status.format('User', 'Hold Time', 'Reason'))
 
             for account in account_failures:
@@ -1189,14 +1189,15 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
             log.exception(
                 'Exception in search_worker under account %s.',
                 account['username'])
+            reason = e.message
             status['active'] = False
             status['message'] = (
-                'Exception in search_worker using account {}. Restarting ' +
-                'with fresh account. See logs for details.').format(
-                    account['username'])
+                'Exception in search_worker using account {}. {}').format(
+                    account['username'], reason)
+            # reason = 'exception'
             account_failures.append({'account': account,
                                      'last_fail_time': now(),
-                                     'reason': 'exception'})
+                                     'reason': reason})
             time.sleep(args.scan_delay)
 
 
