@@ -113,7 +113,13 @@ function removePokemonMarker(encounterId) { // eslint-disable-line no-unused-var
         mapData.pokemons[encounterId].marker.rangeCircle.setMap(null)
         delete mapData.pokemons[encounterId].marker.rangeCircle
     }
+    if (mapData.pokemons[encounterId].marker.infoWindowIsOpen) {
+        mapData.pokemons[encounterId].marker.persist = null
+        mapData.pokemons[encounterId].marker.infoWindow.close()
+        mapData.pokemons[encounterId].marker.infoWindowIsOpen = false
+    }
     mapData.pokemons[encounterId].marker.setMap(null)
+    mapData.pokemons[encounterId].marker.setVisible(false)
     mapData.pokemons[encounterId].hidden = true
 }
 
@@ -1916,9 +1922,9 @@ function sendNotification(title, text, icon, lat, lon) {
     /* Push.js requests the Notification permission automatically if
      * necessary. */
     Push.create(title, notificationDetails).catch(function () {
-        /* Push.js doesn't fall back automatically if the user denies the
-         * Notifications permission. */
-        sendToastrPokemonNotification(title, text, icon, lat, lon)
+        /* Don't do anything if the user denies the Notifications
+         * permission, it means they don't want notifications. Push.js
+         * will fall back to toastr if Notifications are not supported. */
     })
 }
 
