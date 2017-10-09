@@ -653,6 +653,19 @@ class Raid(BaseModel):
     last_scanned = DateTimeField(default=datetime.utcnow, index=True)
 
 
+class RaidH(BaseModel):
+    gym_id = Utf8mb4CharField(primary_key=True, max_length=50)
+    level = IntegerField(index=True)
+    spawn = DateTimeField(primary_key=True)
+    start = DateTimeField(index=True)
+    end = DateTimeField(index=True)
+    pokemon_id = SmallIntegerField(null=True)
+    cp = IntegerField(null=True)
+    move_1 = SmallIntegerField(null=True)
+    move_2 = SmallIntegerField(null=True)
+    last_scanned = DateTimeField(default=datetime.utcnow, index=True)
+
+
 class LocationAltitude(LatLongModel):
     cellid = Utf8mb4CharField(primary_key=True, max_length=50)
     latitude = DoubleField()
@@ -2325,6 +2338,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
         db_update_queue.put((Gym, gyms))
     if raids:
         db_update_queue.put((Raid, raids))
+        db_update_queue.put((RaidH, raids))
     if spawn_points:
         db_update_queue.put((SpawnPoint, spawn_points))
         db_update_queue.put((ScanSpawnPoint, scan_spawn_points))
@@ -2745,7 +2759,7 @@ def bulk_upsert(cls, data, db):
 
 
 def create_tables(db):
-    tables = [Pokemon, Pokestop, Gym, Raid, ScannedLocation, GymDetails,
+    tables = [Pokemon, Pokestop, Gym, Raid, RaidH, ScannedLocation, GymDetails,
               GymMember, GymPokemon, Trainer, MainWorker, WorkerStatus,
               SpawnPoint, ScanSpawnPoint, SpawnpointDetectionData,
               Token, LocationAltitude, PlayerLocale, HashKeys]
