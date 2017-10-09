@@ -654,11 +654,11 @@ class Raid(BaseModel):
 
 
 class RaidH(BaseModel):
-    gym_id = Utf8mb4CharField(primary_key=True, max_length=50)
-    level = IntegerField(index=True)
-    spawn = DateTimeField(primary_key=True)
-    start = DateTimeField(index=True)
-    end = DateTimeField(index=True)
+    gym_id = Utf8mb4CharField(max_length=50)
+    level = IntegerField()
+    spawn = DateTimeField()
+    start = DateTimeField()
+    end = DateTimeField()
     pokemon_id = SmallIntegerField(null=True)
     cp = IntegerField(null=True)
     move_1 = SmallIntegerField(null=True)
