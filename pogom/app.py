@@ -202,10 +202,12 @@ class Pogom(Flask):
 
     def raw_data(self):
         # Make sure fingerprint isn't blacklisted.
-        fingerprint_blacklisted = any([
-            fingerprints['no_referrer'](request),
-            fingerprints['iPokeGo'](request)
-        ])
+        # fingerprint_blacklisted = any([
+        #     fingerprints['no_referrer'](request),
+        #     fingerprints['iPokeGo'](request)
+        # ])
+
+        fingerprint_blacklisted = False
 
         if fingerprint_blacklisted:
             log.debug('User denied access: blacklisted fingerprint.')
