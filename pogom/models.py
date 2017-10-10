@@ -2337,8 +2337,8 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
     if gyms:
         db_update_queue.put((Gym, gyms))
     if raids:
+        db_update_queue.put((RaidH, raids.copy()))
         db_update_queue.put((Raid, raids))
-        db_update_queue.put((RaidH, raids))
     if spawn_points:
         db_update_queue.put((SpawnPoint, spawn_points))
         db_update_queue.put((ScanSpawnPoint, scan_spawn_points))
