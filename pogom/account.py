@@ -10,9 +10,10 @@ from timeit import default_timer
 from pgoapi import PGoApi
 from pgoapi.exceptions import AuthException
 
+from pogom.pgpool import pgpool_request_accounts, pgpool_release_account
 from .fakePogoApi import FakePogoApi
 from .pgoapiwrapper import PGoApiWrapper
-from .utils import in_radius, generate_device_info, distance
+from .utils import in_radius, generate_device_info, distance, now
 from .proxy import get_new_proxy
 from .apiRequests import (send_generic_request, fort_details,
                           recycle_inventory_item, use_item_egg_incubator,
@@ -27,6 +28,54 @@ class TooManyLoginAttempts(Exception):
 
 class LoginSequenceFail(Exception):
     pass
+
+
+class NullTimeException(Exception):
+
+    def __init__(self, type):
+        self.type = type
+        super(NullTimeException, self).__init__(NullTimeException.__name__)
+
+
+def get_account(args, account_queue, status):
+    if args.pgpool_url is None:
+        return account_queue.get()
+    else:
+        if args.pgpool_initial_accounts:
+            account = args.pgpool_initial_accounts.pop()
+            log.info("Picked account {} from initial PGPool account list.".format(account['username']))
+        else:
+            account = None
+            while not account:
+                account = pgpool_request_accounts(args, 1)
+                if not account:
+                    msg = "Could not request account from PGPool (none left?). Retrying in 30 seconds."
+                    status['message'] = msg
+                    log.warning(msg)
+                    time.sleep(30)
+            log.info("Successfully requested account {} from PGPool.".format(account['username']))
+        return {
+            'username': account['username'],
+            'password': account['password'],
+            'auth_service': account['auth_service'],
+            'pgpool_account': account
+        }
+
+
+def account_revive(args, account_queue, account):
+    if args.pgpool_url is None:
+        account_queue.put(account)
+    else:
+        pgpool_release_account(args, account)
+
+
+def account_failed(args, account_failures, account, reason):
+    if args.pgpool_url is None:
+        account_failures.append({'account': account,
+                                 'last_fail_time': now(),
+                                 'reason': reason})
+    else:
+        pgpool_release_account(account)
 
 
 # Create the API object that'll be used to scan.

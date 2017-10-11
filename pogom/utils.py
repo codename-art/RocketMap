@@ -23,6 +23,8 @@ from requests.adapters import HTTPAdapter
 from cHaversine import haversine
 from pprint import pformat
 
+from pogom.pgpool import pgpool_request_accounts
+
 log = logging.getLogger(__name__)
 
 
@@ -506,6 +508,8 @@ def get_args():
                          help=('Show debug messages from RocketMap ' +
                                'and pgoapi.'),
                          type=int, dest='verbose')
+    parser.add_argument('-pgpu', '--pgpool-url', default=None,
+                        help='URL of PGPool account manager.')
     parser.set_defaults(DEBUG=False)
 
     args = parser.parse_args()
@@ -521,7 +525,7 @@ def get_args():
         # password and auth_service arguments.
         # CSV file should have lines like "ptc,username,password",
         # "username,password" or "username".
-        if args.accountcsv is not None:
+        if args.accountcsv is not None and args.pgpool_url is None:
             # Giving num_fields something it would usually not get.
             num_fields = -1
             with open(args.accountcsv, 'r') as f:
@@ -634,99 +638,108 @@ def get_args():
 
         errors = []
 
-        num_auths = len(args.auth_service)
-        num_usernames = 0
-        num_passwords = 0
+        if args.pgpool_url is None:
+            num_auths = len(args.auth_service)
+            num_usernames = 0
+            num_passwords = 0
 
-        if len(args.username) == 0:
+            if len(args.username) == 0:
+                errors.append(
+                    'Missing `username` either as -u/--username, csv file ' +
+                    'using -ac, or in config.')
+            else:
+                num_usernames = len(args.username)
+
+            if len(args.password) == 0:
+                errors.append(
+                    'Missing `password` either as -p/--password, csv file, ' +
+                    'or in config.')
+            else:
+                num_passwords = len(args.password)
+
+            if num_auths == 0:
+                args.auth_service = ['ptc']
+
+            num_auths = len(args.auth_service)
+
+            if num_usernames > 1:
+                if num_passwords > 1 and num_usernames != num_passwords:
+                    errors.append((
+                        'The number of provided passwords ({}) must match the ' +
+                        'username count ({})').format(num_passwords,
+                                                      num_usernames))
+                if num_auths > 1 and num_usernames != num_auths:
+                    errors.append((
+                        'The number of provided auth ({}) must match the ' +
+                        'username count ({}).').format(num_auths, num_usernames))
+        elif args.workers is None:
             errors.append(
-                'Missing `username` either as -u/--username, csv file ' +
-                'using -ac, or in config.')
-        else:
-            num_usernames = len(args.username)
+                'Missing `workers` either as -w/--workers or in config. Required when using PGPool.')
 
         if args.location is None:
             errors.append(
                 'Missing `location` either as -l/--location or in config.')
-
-        if len(args.password) == 0:
-            errors.append(
-                'Missing `password` either as -p/--password, csv file, ' +
-                'or in config.')
-        else:
-            num_passwords = len(args.password)
 
         if args.step_limit is None:
             errors.append(
                 'Missing `step_limit` either as -st/--step-limit or ' +
                 'in config.')
 
-        if num_auths == 0:
-            args.auth_service = ['ptc']
-
-        num_auths = len(args.auth_service)
-
-        if num_usernames > 1:
-            if num_passwords > 1 and num_usernames != num_passwords:
-                errors.append((
-                    'The number of provided passwords ({}) must match the ' +
-                    'username count ({})').format(num_passwords,
-                                                  num_usernames))
-            if num_auths > 1 and num_usernames != num_auths:
-                errors.append((
-                    'The number of provided auth ({}) must match the ' +
-                    'username count ({}).').format(num_auths, num_usernames))
-
         if len(errors) > 0:
             parser.print_usage()
             print(sys.argv[0] + ": errors: \n - " + "\n - ".join(errors))
             sys.exit(1)
 
-        # Fill the pass/auth if set to a single value.
-        if num_passwords == 1:
-            args.password = [args.password[0]] * num_usernames
-        if num_auths == 1:
-            args.auth_service = [args.auth_service[0]] * num_usernames
-
-        # Make the accounts list.
+        # Make the accounts lists.
         args.accounts = []
-        for i, username in enumerate(args.username):
-            args.accounts.append({'username': username,
-                                  'password': args.password[i],
-                                  'auth_service': args.auth_service[i]})
-
-        # Prepare the L30 accounts for the account sets.
         args.accounts_L30 = []
+        if args.pgpool_url is None:
+            # Fill the pass/auth if set to a single value.
+            if num_passwords == 1:
+                args.password = [args.password[0]] * num_usernames
+            if num_auths == 1:
+                args.auth_service = [args.auth_service[0]] * num_usernames
 
-        if args.high_lvl_accounts:
-            # Context processor.
-            with open(args.high_lvl_accounts, 'r') as accs:
-                for line in accs:
-                    # Make sure it's not an empty line.
-                    if not line.strip() or line.startswith('#'):
-                        continue
+            # Fill the accounts list.
+            args.accounts = []
+            for i, username in enumerate(args.username):
+                args.accounts.append({'username': username,
+                                      'password': args.password[i],
+                                      'auth_service': args.auth_service[i]})
 
-                    line = line.split(',')
+            # Prepare the L30 accounts for the account sets.
+            if args.high_lvl_accounts:
+                # Context processor.
+                with open(args.high_lvl_accounts, 'r') as accs:
+                    for line in accs:
+                        # Make sure it's not an empty line.
+                        if not line.strip():
+                            continue
 
-                    # We need "service, user, pass".
-                    if len(line) < 3:
-                        raise Exception('L30 account is missing a'
-                                        + ' field. Each line requires: '
-                                        + '"service,user,pass".')
+                        line = line.split(',')
 
-                    # Let's remove trailing whitespace.
-                    service = line[0].strip()
-                    username = line[1].strip()
-                    password = line[2].strip()
+                        # We need "service, user, pass".
+                        if len(line) < 3:
+                            raise Exception('L30 account is missing a'
+                                            + ' field. Each line requires: '
+                                            + '"service,user,pass".')
 
-                    hlvl_account = {
-                        'auth_service': service,
-                        'username': username,
-                        'password': password,
-                        'captcha': False
-                    }
+                        # Let's remove trailing whitespace.
+                        service = line[0].strip()
+                        username = line[1].strip()
+                        password = line[2].strip()
 
-                    args.accounts_L30.append(hlvl_account)
+                        hlvl_account = {
+                            'auth_service': service,
+                            'username': username,
+                            'password': password,
+                            'captcha': False
+                        }
+
+                        args.accounts_L30.append(hlvl_account)
+        else:
+            # Request initial number of workers from PGPool
+            args.pgpool_initial_accounts = pgpool_request_accounts(args, args.workers, initial=True)
 
         # Prepare the IV/CP scanning filters.
         args.enc_whitelist = []
@@ -742,23 +755,26 @@ def get_args():
             with open(args.rares_list_file) as f:
                 args.rares_list = frozenset([int(l.strip()) for l in f])
 
-        # Make max workers equal number of accounts if unspecified, and disable
-        # account switching.
-        if args.workers is None:
-            args.workers = len(args.accounts)
-            args.account_search_interval = None
+        if args.pgpool_url is None:
+            # Make max workers equal number of accounts if unspecified, and disable
+            # account switching.
+            if args.workers is None:
+                args.workers = len(args.accounts)
+                args.account_search_interval = None
 
         # Disable search interval if 0 specified.
         if args.account_search_interval == 0:
             args.account_search_interval = None
 
-        # Make sure we don't have an empty account list after adding command
-        # line and CSV accounts.
-        if len(args.accounts) == 0:
-            print(sys.argv[0] +
-                  ": Error: no accounts specified. Use -a, -u, and -p or " +
-                  "--accountcsv to add accounts.")
-            sys.exit(1)
+        if args.pgpool_url is None:
+            # Make sure we don't have an empty account list after adding command
+            # line and CSV accounts.
+            if len(args.accounts) == 0:
+                print(sys.argv[0] +
+                      ": Error: no accounts specified. Use -a, -u, and -p or " +
+                      "--accountcsv to add accounts. Or use -pgpu/--pgpool-url to " +
+                      "specify the URL of PGPool.")
+                sys.exit(1)
 
         if args.webhook_whitelist_file:
             with open(args.webhook_whitelist_file) as f:

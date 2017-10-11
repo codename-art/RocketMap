@@ -24,6 +24,7 @@ from pgoapi import PGoApi
 from .fakePogoApi import FakePogoApi
 from .pgoapiwrapper import PGoApiWrapper
 
+from pogom.account import account_failed, account_revive
 from .models import Token
 from .transform import jitter_location
 from .account import check_login
@@ -156,7 +157,7 @@ def captcha_solver_thread(args, account_queue, account_captchas, hash_key,
             "Account {} successfully uncaptcha'd, returning to " +
             'active duty.').format(account['username'])
         log.info(status['message'])
-        account_queue.put(account)
+        account_revive(args, account_queue, account)
     else:
         status['message'] = (
             'Account {} failed verifyChallenge, putting back ' +
@@ -192,11 +193,7 @@ def handle_captcha(args, status, api, account, account_failures,
                 'Account {} has encountered a captcha. ' +
                 'Putting account away.').format(account['username'])
             log.warning(status['message'])
-            account_failures.append({
-                'account': account,
-                'last_fail_time': now(),
-                'reason': 'captcha found'
-            })
+            account_failed(args, account_failures, account, 'captcha found')
             if 'captcha' in args.wh_types:
                 wh_message = {
                     'status_name': args.status_name,
@@ -214,11 +211,7 @@ def handle_captcha(args, status, api, account, account_failures,
                                        whq):
                 return True
             else:
-                account_failures.append({
-                    'account': account,
-                    'last_fail_time': now(),
-                    'reason': 'captcha failed to verify'
-                })
+                account_failed(args, account_failures, account, 'captcha failed to verify')
                 return False
         else:
             status['message'] = (

@@ -50,6 +50,9 @@ from .captcha import captcha_overseer_thread, handle_captcha
 from .proxy import get_new_proxy
 from .apiRequests import gym_get_info, get_map_objects as gmo
 
+from .account import (AccountSet,
+                      setup_mrmime_account, get_account, account_failed, account_revive)
+
 log = logging.getLogger(__name__)
 
 loginDelayLock = Lock()
@@ -854,9 +857,8 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                             account['username'],
                             args.max_failures)
                     log.warning(status['message'])
-                    account_failures.append({'account': account,
-                                             'last_fail_time': now(),
-                                             'reason': 'failures'})
+                    account_failed(args, account_failures, account,
+                                   'failed more than {} times'.format(args.max_failures))
                     # Exit this loop to get a new account and have the API
                     # recreated.
                     break
@@ -871,9 +873,7 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                         'accounts...').format(account['username'],
                                               args.max_empty)
                     log.warning(status['message'])
-                    account_failures.append({'account': account,
-                                             'last_fail_time': now(),
-                                             'reason': 'empty scans'})
+                    account_failed(args, account_failures, account, 'empty scans')
                     # Exit this loop to get a new account and have the API
                     # recreated.
                     break
@@ -903,7 +903,7 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                             account['username'], status['proxy_url'])
                     log.warning(status['message'])
                     # Experimental, nobody did this before.
-                    account_queue.put(account)
+                    account_revive(args, account_queue, account)
                     # Exit this loop to get a new account and have the API
                     # recreated.
                     break
@@ -916,9 +916,7 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                             'Account {} is being rotated out to rest.'.format(
                                 account['username']))
                         log.info(status['message'])
-                        account_failures.append({'account': account,
-                                                 'last_fail_time': now(),
-                                                 'reason': 'rest interval'})
+                        account_failed(args, account_failures, account, 'rest interval')
                         break
 
                 # Grab the next thing to search (when available).
