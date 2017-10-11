@@ -4,7 +4,9 @@ import requests
 log = logging.getLogger(__name__)
 
 
-def pgpool_request_accounts(args, count, highlvl=False, initial=False):
+def pgpool_request_accounts(args, count=None, highlvl=False, initial=False):
+    if count is None:
+        count = args.highlvl_workers if highlvl else args.workers
     request = {
         'system_id': args.status_name,
         'count': count,

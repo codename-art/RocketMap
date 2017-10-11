@@ -75,6 +75,10 @@ def get_args():
     parser.add_argument('-w', '--workers', type=int,
                         help=('Number of search worker threads to start. ' +
                               'Defaults to the number of accounts specified.'))
+    parser.add_argument('-hw', '--highlvl-workers', type=int,
+                        default=0,
+                        help=('Load this many high level workers from PGPool. ' +
+                              'This requires --pgpool-url to be set.'))
     parser.add_argument('-asi', '--account-search-interval', type=int,
                         default=0,
                         help=('Seconds for accounts to search before ' +
@@ -693,7 +697,13 @@ def get_args():
         # Make the accounts lists.
         args.accounts = []
         args.accounts_L30 = []
-        if args.pgpool_url is None:
+        if args.pgpool_url:
+            # Request initial number of workers from PGPool
+            args.pgpool_initial_accounts = pgpool_request_accounts(args, initial=True)
+            # Request L30 accounts from PGPool
+            if args.highlvl_workers > 0:
+                args.accounts_L30 = pgpool_request_accounts(args, highlvl=True, initial=True)
+        else:
             # Fill the pass/auth if set to a single value.
             if num_passwords == 1:
                 args.password = [args.password[0]] * num_usernames
@@ -737,9 +747,6 @@ def get_args():
                         }
 
                         args.accounts_L30.append(hlvl_account)
-        else:
-            # Request initial number of workers from PGPool
-            args.pgpool_initial_accounts = pgpool_request_accounts(args, args.workers, initial=True)
 
         # Prepare the IV/CP scanning filters.
         args.enc_whitelist = []
