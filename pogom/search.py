@@ -50,8 +50,7 @@ from .captcha import captcha_overseer_thread, handle_captcha
 from .proxy import get_new_proxy
 from .apiRequests import gym_get_info, get_map_objects as gmo
 
-from .account import (AccountSet,
-                      setup_mrmime_account, get_account, account_failed, account_revive)
+from .account import (AccountSet, get_account, account_failed, account_revive)
 
 log = logging.getLogger(__name__)
 
@@ -796,7 +795,7 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
 
             # Get an account.
             stagger_thread(args)
-            account = account_queue.get()
+            account = get_account(args, account_queue, status)
             # Reset account statistics tracked per loop.
             prevStatus = WorkerStatus.get_worker(account['username'])
             if prevStatus:
