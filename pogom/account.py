@@ -66,16 +66,16 @@ def account_revive(args, account_queue, account):
     if args.pgpool_url is None:
         account_queue.put(account)
     else:
-        pgpool_release_account(account, "Captcha solved")
+        pgpool_release_account(args, account, "Captcha solved")
 
 
-def account_failed(args, account_failures, account, reason):
+def account_failed(args, account_failures, account, status, api, reason):
     if args.pgpool_url is None:
         account_failures.append({'account': account,
                                  'last_fail_time': now(),
                                  'reason': reason})
     else:
-        pgpool_release_account(account, reason)
+        pgpool_release_account(args, account, status, api, reason)
 
 
 # Create the API object that'll be used to scan.
@@ -552,6 +552,7 @@ def spin_pokestop(api, account, args, fort, step_location):
         captcha_url = response['responses']['CHECK_CHALLENGE'].challenge_url
         if len(captcha_url) > 1:
             log.debug('Account encountered a reCaptcha.')
+            account['captcha'] = True
             return False
 
         spin_result = response['responses']['FORT_SEARCH'].result

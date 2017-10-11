@@ -856,7 +856,7 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                             account['username'],
                             args.max_failures)
                     log.warning(status['message'])
-                    account_failed(args, account_failures, account,
+                    account_failed(args, account_failures, account, status, api,
                                    'failed more than {} times'.format(args.max_failures))
                     # Exit this loop to get a new account and have the API
                     # recreated.
@@ -872,7 +872,7 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                         'accounts...').format(account['username'],
                                               args.max_empty)
                     log.warning(status['message'])
-                    account_failed(args, account_failures, account, 'empty scans')
+                    account_failed(args, account_failures, account, status, api, 'empty scans')
                     # Exit this loop to get a new account and have the API
                     # recreated.
                     break
@@ -885,7 +885,7 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                         'accounts...').format(account['username'],
                                               args.max_missed)
                     log.warning(status['message'])
-                    account_failed(args, account_failures, account, 'shadowbanned')
+                    account_failed(args, account_failures, account, status, api, 'shadowbanned')
                     # Exit this loop to get a new account and have the API
                     # recreated.
                     break
@@ -913,7 +913,7 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                             'Account {} is being rotated out to rest.'.format(
                                 account['username']))
                         log.info(status['message'])
-                        account_failed(args, account_failures, account, 'rest interval')
+                        account_failed(args, account_failures, account, status, api, 'rest interval')
                         break
 
                 # Grab the next thing to search (when available).
@@ -1206,18 +1206,16 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
 
         # Catch any process exceptions, log them, and continue the thread.
         except Exception as e:
-            log.exception(
-                'Exception in search_worker under account %s.',
-                account['username'])
-            reason = e.message
+            log.error((
+                'Exception in search_worker under account {} Exception ' +
+                'message: {}.').format(account['username'], repr(e)))
             status['active'] = False
             status['message'] = (
-                'Exception in search_worker using account {}. {}').format(
-                    account['username'], reason)
-            # reason = 'exception'
-            account_failures.append({'account': account,
-                                     'last_fail_time': now(),
-                                     'reason': reason})
+                'Exception in search_worker using account {}. Restarting ' +
+                'with fresh account. See logs for details.').format(
+                    account['username'])
+            traceback.print_exc(file=sys.stdout)
+            account_failed(args, account_failures, account, status, api, repr(e))
             time.sleep(args.scan_delay)
 
 

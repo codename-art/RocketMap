@@ -193,7 +193,7 @@ def handle_captcha(args, status, api, account, account_failures,
                 'Account {} has encountered a captcha. ' +
                 'Putting account away.').format(account['username'])
             log.warning(status['message'])
-            account_failed(args, account_failures, account, 'captcha found')
+            account_failed(args, account_failures, account, status, api, 'captcha found')
             if 'captcha' in args.wh_types:
                 wh_message = {
                     'status_name': args.status_name,
@@ -211,7 +211,7 @@ def handle_captcha(args, status, api, account, account_failures,
                                        whq):
                 return True
             else:
-                account_failed(args, account_failures, account, 'captcha failed to verify')
+                account_failed(args, account_failures, account, status, api, 'captcha failed to verify')
                 return False
         else:
             status['message'] = (
