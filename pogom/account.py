@@ -75,7 +75,7 @@ def account_failed(args, account_failures, account, reason):
                                  'last_fail_time': now(),
                                  'reason': reason})
     else:
-        pgpool_release_account(account)
+        pgpool_release_account(account, reason)
 
 
 # Create the API object that'll be used to scan.
