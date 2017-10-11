@@ -88,6 +88,10 @@ def setup_api(args, status, account):
         identifier = account['username'] + account['password']
         device_info = generate_device_info(identifier)
         api = PGoApiWrapper(PGoApi(device_info=device_info))
+        if 'pgpool_account' in account:
+            api.rareless_scans = account['pgpool_account'].get('rareless_scans', 0)
+            api.shadowbanned = account['pgpool_account'].get('shadowbanned', False)
+            del account['pgpool_account']
 
     # New account - new proxy.
     if args.proxy:
