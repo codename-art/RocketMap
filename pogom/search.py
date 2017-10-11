@@ -886,9 +886,7 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                         'accounts...').format(account['username'],
                                               args.max_missed)
                     log.warning(status['message'])
-                    account_failures.append({'account': account,
-                                             'last_fail_time': now(),
-                                             'reason': 'missed pokemon'})
+                    account_failed(args, account_failures, account, 'shadowbanned')
                     # Exit this loop to get a new account and have the API
                     # recreated.
                     break
