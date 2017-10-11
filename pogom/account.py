@@ -66,7 +66,7 @@ def account_revive(args, account_queue, account):
     if args.pgpool_url is None:
         account_queue.put(account)
     else:
-        pgpool_release_account(args, account)
+        pgpool_release_account(account, "Captcha solved")
 
 
 def account_failed(args, account_failures, account, reason):
