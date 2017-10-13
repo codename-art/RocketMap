@@ -3,6 +3,8 @@ import requests
 import time
 import json
 
+from pogom.utils import get_args
+
 log = logging.getLogger(__name__)
 
 
@@ -23,12 +25,13 @@ def pgpool_request_accounts(args, count=None, highlvl=False, initial=False):
 
 def pgpool_release_account(args, account, status, api, reason):
     if 'pgacc' in account:
-        update_pgpool(args, account['pgacc'], status, api, release=True, reason=reason)
+        update_pgpool(account['pgacc'], status, api, release=True, reason=reason)
     else:
         log.error("Could not release account {} to PGPool. No POGOAccount found!".format(account['username']))
 
 
-def update_pgpool(args, account, status, api, release=False, reason=None):
+def update_pgpool(account, status, api, release=False, reason=None):
+    args = get_args()
     data = {
         'username': account.username,
         'password': account.password,
@@ -84,7 +87,7 @@ def update_pgpool(args, account, status, api, release=False, reason=None):
         data['_release_reason'] = reason
     try:
         cmd = 'release' if release else 'update'
-        url = '{}/account/{}'.format(account.cfg['pgpool_url'], cmd)
+        url = '{}/account/{}'.format(args.pgpool_url, cmd)
         r = requests.post(url, data=json.dumps(data))
         if r.status_code == 200:
             account.log_info("Successfully {}d PGPool account.".format(cmd))

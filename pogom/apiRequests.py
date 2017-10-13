@@ -5,6 +5,7 @@ import logging
 
 from pgoapi.utilities import f2i, get_cell_ids
 from pgoapi.hash_server import BadHashRequestException, HashingOfflineException
+from pgpool import update_pgpool
 
 from .transform import jitter_location
 
@@ -60,6 +61,12 @@ def send_generic_request(req, account, settings=False, buddy=True, inbox=True):
             del resp['responses'][item]
 
     log.log(5, 'Response: \n%s', resp)
+
+    # TODO: set loc in status
+    status = {
+        'latitude': req
+    }
+    update_pgpool(account, status=status)
     return resp
 
 
@@ -159,7 +166,6 @@ def parse_inventory(account, api_response):
 
 
 def catchRequestException(task):
-
     def _catch(function):
 
         def wrapper(*args, **kwargs):
@@ -251,7 +257,7 @@ def get_map_objects(api, account, position, no_jitter=False):
                   scan_location[2])
 
     cell_ids = get_cell_ids(scan_location[0], scan_location[1])
-    timestamps = [0, ]*len(cell_ids)
+    timestamps = [0, ] * len(cell_ids)
     req = api.create_request()
     req.get_map_objects(
         latitude=f2i(scan_location[0]),
