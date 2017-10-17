@@ -110,4 +110,4 @@ def pgpool_update(account, status, api=None, release=False, reason=None):
             log.warning("Got status code {} from PGPool while updating account.".format(r.status_code))
     except Exception as e:
         log.error("Could not update PGPool account: {}".format(repr(e)))
-    account._last_pgpool_update = time.time()
+    # account._last_pgpool_update = time.time()
