@@ -60,7 +60,7 @@ def pgpool_update(account, status, api=None, release=False, reason=None):
         data.update({
             'captcha': account['captcha']
         })
-    if status.missed is not None:
+    if 'missed' in status:
         data['rareless_scans'] = status['missed']
     if status.missed > args.max_missed:
         data['shadowbanned'] = True
