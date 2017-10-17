@@ -4,6 +4,7 @@
 import logging
 import time
 
+from pogom.pgpool import pgpool_enabled
 from .pgorequestwrapper import PGoRequestWrapper
 
 log = logging.getLogger(__name__)
@@ -13,6 +14,8 @@ class PGoApiWrapper:
     def __init__(self, api):
         log.debug('Wrapped PGoApi.')
         self.api = api
+        self._pgpool_auto_update_enabled = pgpool_enabled()
+        self._last_pgpool_update = 0
 
     def __getattr__(self, attr):
         orig_attr = getattr(self.api, attr)
@@ -30,7 +33,8 @@ class PGoApiWrapper:
 
     def create_request(self, *args, **kwargs):
         request = self.api.create_request(*args, **kwargs)
-        return PGoRequestWrapper(request)
+        self._last_pgpool_update = time.time()
+        return PGoRequestWrapper(request, self.needs_pgpool_update())
 
     def is_logged_in(self):
         # Logged in? Enough time left? Cool!
@@ -41,3 +45,7 @@ class PGoApiWrapper:
 
     def is_banned(self):
         return self._bad_request_ban or self._player_state.get('banned', False)
+
+    def needs_pgpool_update(self):
+        return self._pgpool_auto_update_enabled and (
+            time.time() - self._last_pgpool_update >= 60)

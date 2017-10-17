@@ -19,12 +19,13 @@ log = logging.getLogger(__name__)
 
 class PGoRequestWrapper:
 
-    def __init__(self, request):
+    def __init__(self, request, pgpool_update=False):
         log.debug('Wrapped PGoApiRequest.')
         self.args = get_args()
 
         self.request = request
         self.retries = self.args.api_retries
+        self.pgpool_update = pgpool_update
 
     def __getattr__(self, attr):
         orig_attr = getattr(self.request, attr)
@@ -108,3 +109,6 @@ class PGoRequestWrapper:
         # If we've reached here, we have no retries left and an exception
         # still occurred.
         raise
+
+    def needs_pgpool_update(self):
+        return self.pgpool_update

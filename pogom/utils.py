@@ -699,10 +699,10 @@ def get_args():
         args.accounts_L30 = []
         if args.pgpool_url:
             # Request initial number of workers from PGPool
-            args.pgpool_initial_accounts = pgpool_request_accounts(args, initial=True)
+            args.pgpool_initial_accounts = pgpool_request_accounts(initial=True)
             # Request L30 accounts from PGPool
             if args.highlvl_workers > 0:
-                args.accounts_L30 = pgpool_request_accounts(args, highlvl=True, initial=True)
+                args.accounts_L30 = pgpool_request_accounts(highlvl=True, initial=True)
         else:
             # Fill the pass/auth if set to a single value.
             if num_passwords == 1:

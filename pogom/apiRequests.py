@@ -5,7 +5,7 @@ import logging
 
 from pgoapi.utilities import f2i, get_cell_ids
 from pgoapi.hash_server import BadHashRequestException, HashingOfflineException
-from pgpool import update_pgpool
+from pgpool import pgpool_update
 
 from .transform import jitter_location
 
@@ -62,11 +62,13 @@ def send_generic_request(req, account, settings=False, buddy=True, inbox=True):
 
     log.log(5, 'Response: \n%s', resp)
 
-    # TODO: set loc in status
-    status = {
-        'latitude': req
-    }
-    update_pgpool(account, status=status)
+    if req.needs_pgpool_update():
+        position = req.get_position()
+        status = {
+            'latitude': position[0],
+            'longitude': position[1]
+        }
+        pgpool_update(account=account, status=status)
     return resp
 
 

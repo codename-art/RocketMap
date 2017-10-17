@@ -6,9 +6,17 @@ import json
 from pogom.utils import get_args
 
 log = logging.getLogger(__name__)
+args = get_args()
 
 
-def pgpool_request_accounts(args, count=None, highlvl=False, initial=False):
+def pgpool_enabled():
+    if args.pgpool_url is None:
+        return False
+    else:
+        return True
+
+
+def pgpool_request_accounts(count=None, highlvl=False, initial=False):
     if count is None:
         count = args.highlvl_workers if highlvl else args.workers
     request = {
@@ -23,15 +31,14 @@ def pgpool_request_accounts(args, count=None, highlvl=False, initial=False):
     return r.json()
 
 
-def pgpool_release_account(args, account, status, api, reason):
+def pgpool_release_account(account, status, api=None, reason=None):
     if 'pgacc' in account:
-        update_pgpool(account['pgacc'], status, api, release=True, reason=reason)
+        pgpool_update(account['pgacc'], status, api, release=True, reason=reason)
     else:
         log.error("Could not release account {} to PGPool. No POGOAccount found!".format(account['username']))
 
 
-def update_pgpool(account, status, api, release=False, reason=None):
-    args = get_args()
+def pgpool_update(account, status, api=None, release=False, reason=None):
     data = {
         'username': account.username,
         'password': account.password,
@@ -41,7 +48,7 @@ def update_pgpool(account, status, api, release=False, reason=None):
         'longitude': status.longitude
     }
     # After login we know whether we've got a captcha
-    if api.is_logged_in():
+    if api is not None and api.is_logged_in():
         data.update({
             'captcha': account.has_captcha()
         })
@@ -56,7 +63,7 @@ def update_pgpool(account, status, api, release=False, reason=None):
             'warn': account['warning'],
             # 'banned': account.is_banned(),
             # 'ban_flag': account.get_state('banned')
-            #'tutorial_state': data.get('tutorial_state'),
+            # 'tutorial_state': data.get('tutorial_state'),
         })
     if account['level']:
         data.update({

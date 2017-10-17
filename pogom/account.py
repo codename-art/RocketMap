@@ -47,7 +47,7 @@ def get_account(args, account_queue, status):
         else:
             account = None
             while not account:
-                account = pgpool_request_accounts(args, count=1)
+                account = pgpool_request_accounts(count=1)
                 if not account:
                     msg = "Could not request account from PGPool (none left?). Retrying in 30 seconds."
                     status['message'] = msg
@@ -66,7 +66,7 @@ def account_revive(args, account_queue, account):
     if args.pgpool_url is None:
         account_queue.put(account)
     else:
-        pgpool_release_account(args, account, "Captcha solved")
+        pgpool_release_account(account, "Captcha solved")
 
 
 def account_failed(args, account_failures, account, status, api, reason):
@@ -75,7 +75,7 @@ def account_failed(args, account_failures, account, status, api, reason):
                                  'last_fail_time': now(),
                                  'reason': reason})
     else:
-        pgpool_release_account(args, account, status, api, reason)
+        pgpool_release_account(account, status, api, reason)
 
 
 # Create the API object that'll be used to scan.
