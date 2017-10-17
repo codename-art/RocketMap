@@ -203,6 +203,8 @@ def main():
     sys.excepthook = handle_exception
 
     args = get_args()
+    from pogom.pgpool import pgpool_init
+    pgpool_init(args)
 
     set_log_and_verbosity(log)
 

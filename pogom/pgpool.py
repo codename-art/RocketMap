@@ -3,11 +3,13 @@ import requests
 import time
 import json
 
-from pogom.utils import get_args
 
 log = logging.getLogger(__name__)
-args = get_args()
+args = None
 
+def pgpool_init(global_args):
+    global args
+    args = global_args
 
 def pgpool_enabled():
     if args.pgpool_url is None:
