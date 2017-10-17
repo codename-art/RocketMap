@@ -520,6 +520,9 @@ def get_args():
     parser.add_argument('-pgpui', '--pgpool-update-interval',
                         help='Interval to send update to pgpool',
                         type=int, default=300)
+    parser.add_argument('-pgpri', '--pgpool-retry-interval',
+                        help='Interval to retry failed pgpool request',
+                        type=int, default=120)
     parser.set_defaults(DEBUG=False)
 
     args = parser.parse_args()
