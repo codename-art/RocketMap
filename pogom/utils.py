@@ -514,6 +514,12 @@ def get_args():
                          type=int, dest='verbose')
     parser.add_argument('-pgpu', '--pgpool-url', default=None,
                         help='URL of PGPool account manager.')
+    parser.add_argument('-pgpn', '--pgpool-new', action='store_true',
+                        default=False,
+                        help='Take new or banned accounts from PGPool.')
+    parser.add_argument('-pgpui', '--pgpool-update-interval',
+                        help='Interval to send update to pgpool',
+                        type=int, default=60)
     parser.set_defaults(DEBUG=False)
 
     args = parser.parse_args()

@@ -26,7 +26,8 @@ def pgpool_request_accounts(count=None, highlvl=False, initial=False):
         'count': count,
         'min_level': 30 if highlvl else 1,
         'max_level': 40 if highlvl else 29,
-        'include_already_assigned': initial
+        'include_already_assigned': initial,
+        'banned_or_new': args.pgpool_new
     }
 
     r = requests.get("{}/account/request".format(args.pgpool_url), params=request)
