@@ -32,7 +32,7 @@ from .utils import (get_pokemon_name, get_pokemon_rarity, get_pokemon_types,
 from .transform import transform_from_wgs_to_gcj, get_new_coords
 from .customLog import printPokemon
 
-from .account import check_login, setup_api, pokestop_spinnable, spin_pokestop
+from .account import check_login, setup_api, pokestop_spinnable, spin_pokestop, account_failed
 from .proxy import get_new_proxy
 from .apiRequests import encounter
 
@@ -2366,6 +2366,7 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
     hlvl_account = None
     pokemon_id = None
     result = False
+    scan_location = None
     try:
         hlvl_api = None
         pokemon_id = pokemon.pokemon_data.pokemon_id
@@ -2492,6 +2493,15 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
                       hlvl_account['username'],
                       e)
 
+
+        if using_accountset:
+            status = None
+            if scan_location is not None:
+                status = {
+                    'latitude': scan_location[0],
+                    'longitude': scan_location[1]
+                }
+            account_sets.replace(args, '30', hlvl_account, status, repr(e))
 
     return result
 

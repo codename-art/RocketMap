@@ -711,6 +711,7 @@ class AccountSet(object):
 
         # Thread safety.
         self.next_lock = Lock()
+        self.add_lock = Lock()
 
     # Set manipulation.
     def create_set(self, name, values=None):
@@ -780,3 +781,13 @@ class AccountSet(object):
         # the instance needs to wait until the first account becomes available,
         # so it doesn't need to keep asking if we know we need to wait.
         return False
+
+    def replace(self, args, set_name, account, status, reason):
+        with self.add_lock:
+            # Readability.
+            account_set = self.sets[set_name]
+            account_set.dicard(account)
+            account_failed(args, None, account, status, None, reason)
+            new_account = pgpool_request_accounts(args, highlvl=True, count=1)
+            account_set.add(new_account)
+            log.warning("L30 accout replased %s -> %s", account['username'], new_account['new_account'])

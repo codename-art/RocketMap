@@ -51,10 +51,13 @@ def pgpool_update(account, status, api=None, release=False, reason=None):
         'username': account['username'],
         'password': account['password'],
         'auth_service': account['auth_service'],
-        'system_id': None if release else args.status_name,
-        'latitude': status['latitude'],
-        'longitude': status['longitude']
+        'system_id': None if release else args.status_name
     }
+    if status is not None:
+        data.update({
+            'latitude': status['latitude'],
+            'longitude': status['longitude']
+        })
     # After login we know whether we've got a captcha
     if 'captcha' in account:
         data.update({
