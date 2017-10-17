@@ -88,7 +88,7 @@ def pgpool_update(account, status, api=None, release=False, reason=None):
             'balls': 0,
             'total_items': account['items'],
             'pokemon': len(account['pokemons']),
-            'eggs': len(account.eggs),
+            'eggs': len(account['eggs']),
             'incubators': len(account['incubators'])
         })
     # if account.inbox:
