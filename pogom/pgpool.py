@@ -105,9 +105,9 @@ def pgpool_update(account, status, api=None, release=False, reason=None):
         url = '{}/account/{}'.format(args.pgpool_url, cmd)
         r = requests.post(url, data=json.dumps(data))
         if r.status_code == 200:
-            account.log_info("Successfully {}d PGPool account.".format(cmd))
+            log.info("Successfully {}d PGPool account.".format(cmd))
         else:
-            account.log_warning("Got status code {} from PGPool while updating account.".format(r.status_code))
+            log.warning("Got status code {} from PGPool while updating account.".format(r.status_code))
     except Exception as e:
-        account.log_error("Could not update PGPool account: {}".format(repr(e)))
+        log.error("Could not update PGPool account: {}".format(repr(e)))
     account._last_pgpool_update = time.time()
