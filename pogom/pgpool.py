@@ -64,16 +64,16 @@ def pgpool_update(account, status, api=None, release=False, reason=None):
         data['rareless_scans'] = status['missed']
         if status['missed'] > args.max_missed:
             data['shadowbanned'] = True
-    if account['banned']:
-        data['banned'] = True
-    if account['warning']:
+    if 'banned' in account:
+        data['banned'] = account['banned']
+    if 'warning' in account:
         data.update({
             'warn': account['warning'],
             # 'banned': account.is_banned(),
             # 'ban_flag': account.get_state('banned')
             # 'tutorial_state': data.get('tutorial_state'),
         })
-    if account['level']:
+    if 'level' in account:
         data.update({
             'level': account['level'],
             # 'xp': account.get_stats('experience'),
