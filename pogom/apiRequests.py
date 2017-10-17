@@ -69,7 +69,7 @@ def send_generic_request(req, account, settings=False, buddy=True, inbox=True):
             'longitude': position[1]
         }
         pgpool_update(account=account, status=status)
-        log.info("Updating PGPool")
+        log.info("Updating PGPool for %s", account['username'])
     return resp
 
 
