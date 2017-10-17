@@ -5,9 +5,12 @@ import logging
 import time
 
 from pogom.pgpool import pgpool_enabled
+from pogom.utils import get_args
 from .pgorequestwrapper import PGoRequestWrapper
 
 log = logging.getLogger(__name__)
+
+args = get_args()
 
 
 class PGoApiWrapper:
@@ -46,7 +49,7 @@ class PGoApiWrapper:
         return self._bad_request_ban or self._player_state.get('banned', False)
 
     def needs_pgpool_update(self):
-        pgpool_update_ = self._pgpool_auto_update_enabled and (time.time() - self._last_pgpool_update >= 60)
+        pgpool_update_ = self._pgpool_auto_update_enabled and (time.time() - self._last_pgpool_update >= args.pgpool_update_interval)
         if pgpool_update_:
             self._last_pgpool_update = time.time()
         return pgpool_update_

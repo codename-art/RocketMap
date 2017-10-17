@@ -519,7 +519,7 @@ def get_args():
                         help='Take new or banned accounts from PGPool.')
     parser.add_argument('-pgpui', '--pgpool-update-interval',
                         help='Interval to send update to pgpool',
-                        type=int, default=60)
+                        type=int, default=300)
     parser.set_defaults(DEBUG=False)
 
     args = parser.parse_args()
