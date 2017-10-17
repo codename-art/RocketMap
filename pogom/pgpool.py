@@ -83,13 +83,13 @@ def pgpool_update(account, status, api=None, release=False, reason=None):
             'spins': account['spins'],
             'walked': account['walked']
         })
-    if account.items:
+    if 'items' in account:
         data.update({
             'balls': 0,
-            'total_items': account.items,
-            'pokemon': len(account.pokemon),
+            'total_items': account['items'],
+            'pokemon': len(account['pokemons']),
             'eggs': len(account.eggs),
-            'incubators': len(account.incubators)
+            'incubators': len(account['incubators'])
         })
     # if account.inbox:
     #     data.update({
