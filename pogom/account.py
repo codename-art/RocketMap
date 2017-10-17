@@ -58,7 +58,8 @@ def get_account(args, account_queue, status):
             'username': account['username'],
             'password': account['password'],
             'auth_service': account['auth_service'],
-            'pgpool_account': True
+            'pgpool_account': account,
+            'from_pgpool': True
         }
 
 
