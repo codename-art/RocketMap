@@ -786,7 +786,7 @@ class AccountSet(object):
         with self.add_lock:
             # Readability.
             account_set = self.sets[set_name]
-            account_set.dicard(account)
+            account_set.remove(account)
             account_failed(args, None, account, status, None, reason)
             new_account = pgpool_request_accounts(args, highlvl=True, count=1)
             account_set.add(new_account)
