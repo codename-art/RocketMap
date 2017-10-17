@@ -48,12 +48,12 @@ def pgpool_release_account(account, status, api=None, reason=None):
 
 def pgpool_update(account, status, api=None, release=False, reason=None):
     data = {
-        'username': account.username,
-        'password': account.password,
-        'auth_service': account.auth_service,
+        'username': account['username'],
+        'password': account['password'],
+        'auth_service': account['auth_service'],
         'system_id': None if release else args.status_name,
-        'latitude': status.latitude,
-        'longitude': status.longitude
+        'latitude': status['latitude'],
+        'longitude': status['longitude']
     }
     # After login we know whether we've got a captcha
     if api is not None and api.is_logged_in():
@@ -61,7 +61,7 @@ def pgpool_update(account, status, api=None, release=False, reason=None):
             'captcha': account.has_captcha()
         })
     if status.missed is not None:
-        data['rareless_scans'] = status.missed
+        data['rareless_scans'] = status['missed']
     if status.missed > args.max_missed:
         data['shadowbanned'] = True
     if account['banned']:
