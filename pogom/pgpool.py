@@ -62,8 +62,8 @@ def pgpool_update(account, status, api=None, release=False, reason=None):
         })
     if 'missed' in status:
         data['rareless_scans'] = status['missed']
-    if status.missed > args.max_missed:
-        data['shadowbanned'] = True
+        if status['missed'] > args.max_missed:
+            data['shadowbanned'] = True
     if account['banned']:
         data['banned'] = True
     if account['warning']:
