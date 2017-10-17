@@ -3,13 +3,14 @@ import requests
 import time
 import json
 
-
 log = logging.getLogger(__name__)
 args = None
+
 
 def pgpool_init(global_args):
     global args
     args = global_args
+
 
 def pgpool_enabled():
     if args.pgpool_url is None:
@@ -18,19 +19,23 @@ def pgpool_enabled():
         return True
 
 
-def pgpool_request_accounts(count=None, highlvl=False, initial=False):
+def pgpool_request_accounts(init_args, count=None, highlvl=False, initial=False):
+    global args
+    if args is None:
+        args = init_args
+
     if count is None:
-        count = args.highlvl_workers if highlvl else args.workers
+        count = init_args.highlvl_workers if highlvl else init_args.workers
     request = {
-        'system_id': args.status_name,
+        'system_id': init_args.status_name,
         'count': count,
         'min_level': 30 if highlvl else 1,
         'max_level': 40 if highlvl else 29,
         'include_already_assigned': initial,
-        'banned_or_new': args.pgpool_new
+        'banned_or_new': init_args.pgpool_new
     }
 
-    r = requests.get("{}/account/request".format(args.pgpool_url), params=request)
+    r = requests.get("{}/account/request".format(init_args.pgpool_url), params=request)
     return r.json()
 
 
