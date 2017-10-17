@@ -47,5 +47,6 @@ class PGoApiWrapper:
 
     def needs_pgpool_update(self):
         pgpool_update_ = self._pgpool_auto_update_enabled and (time.time() - self._last_pgpool_update >= 60)
-        self._last_pgpool_update = time.time()
+        if pgpool_update_:
+            self._last_pgpool_update = time.time()
         return pgpool_update_
