@@ -33,7 +33,6 @@ class PGoApiWrapper:
 
     def create_request(self, *args, **kwargs):
         request = self.api.create_request(*args, **kwargs)
-        self._last_pgpool_update = time.time()
         return PGoRequestWrapper(request, self.needs_pgpool_update())
 
     def is_logged_in(self):
@@ -47,5 +46,6 @@ class PGoApiWrapper:
         return self._bad_request_ban or self._player_state.get('banned', False)
 
     def needs_pgpool_update(self):
-        return self._pgpool_auto_update_enabled and (
-            time.time() - self._last_pgpool_update >= 60)
+        pgpool_update_ = self._pgpool_auto_update_enabled and (time.time() - self._last_pgpool_update >= 60)
+        self._last_pgpool_update = time.time()
+        return pgpool_update_
