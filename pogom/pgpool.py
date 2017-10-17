@@ -56,9 +56,9 @@ def pgpool_update(account, status, api=None, release=False, reason=None):
         'longitude': status['longitude']
     }
     # After login we know whether we've got a captcha
-    if api is not None and api.is_logged_in():
+    if 'captcha' in account:
         data.update({
-            'captcha': account.has_captcha()
+            'captcha': account['captcha']
         })
     if status.missed is not None:
         data['rareless_scans'] = status['missed']
