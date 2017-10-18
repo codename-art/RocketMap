@@ -712,6 +712,8 @@ def get_args():
             # Request L30 accounts from PGPool
             if args.highlvl_workers > 0:
                 args.accounts_L30 = pgpool_request_accounts(args, highlvl=True, initial=True)
+                for acc in args.accounts_L30:
+                    acc['from_pgpool'] = True
         else:
             # Fill the pass/auth if set to a single value.
             if num_passwords == 1:
