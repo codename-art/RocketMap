@@ -791,4 +791,4 @@ class AccountSet(object):
             account_failed(args, None, account, status, None, reason)
             new_account = pgpool_request_accounts(args, highlvl=True, count=1)
             account_set.append(new_account)
-            log.warning("L30 accout replased %s -> %s", account['username'], new_account['new_account'])
+            log.warning("L30 accout replased %s -> %s", account['username'], new_account['username'])
