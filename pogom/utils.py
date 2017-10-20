@@ -517,6 +517,10 @@ def get_args():
     parser.add_argument('-pgpn', '--pgpool-new', action='store_true',
                         default=False,
                         help='Take new or banned accounts from PGPool.')
+    parser.add_argument('-pgpsb', '--pgpool-shadow-banned', action='store_true',
+                        default=False,
+                        help='Take shadowbanned accounts from PGPool.'
+                             'Usefull for gym only scan')
     parser.add_argument('-pgpui', '--pgpool-update-interval',
                         help='Interval to send update to pgpool',
                         type=int, default=300)
