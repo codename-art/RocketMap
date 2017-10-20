@@ -24,8 +24,10 @@ def pgpool_request_accounts(init_args, count=None, highlvl=False, initial=False)
     if args is None:
         args = init_args
 
+    init = False
     if count is None:
         count = init_args.highlvl_workers if highlvl else init_args.workers
+        init = True
     request = {
         'system_id': init_args.status_name,
         'count': count,
@@ -36,8 +38,13 @@ def pgpool_request_accounts(init_args, count=None, highlvl=False, initial=False)
         'shadow': init_args.pgpool_shadow_banned
     }
 
-    r = requests.get("{}/account/request".format(init_args.pgpool_url), params=request)
-    return r.json()
+    r = requests.get("{}/account/request".format(init_args.pgpool_url), params=request).json()
+    if init and count == 1:
+        # If requested first chunk of accounts on scanner initialization,
+        # it expects list instead of single object
+        return [r]
+    else:
+        return r
 
 
 def pgpool_release_account(account, status, api=None, reason=None):
