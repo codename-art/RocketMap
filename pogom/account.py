@@ -167,6 +167,7 @@ def check_login(args, account, api, proxy_url):
             ('Failed to login to Pokemon Go with account %s in ' +
              '%d tries. Giving up.'),
             account['username'], num_tries)
+        account['banned'] = True
         raise TooManyLoginAttempts('Exceeded login attempts.')
 
     time.sleep(random.uniform(2, 4))
