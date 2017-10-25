@@ -794,3 +794,9 @@ class AccountSet(object):
             new_account['from_pgpool'] = True
             account_set.append(new_account)
             log.warning("L30 accout replased %s -> %s", account['username'], new_account['username'])
+
+    def release_all(self):
+        with self.next_lock:
+            for set in self.sets:
+                for acc in set:
+                    self.release(acc)

@@ -487,107 +487,111 @@ def search_overseer_thread(args, new_location_queue, control_flags, heartb,
     stats_timer = 0
 
     # The real work starts here but will halt when any control flag is set.
-    while True:
-        if (args.hash_key is not None and
-            (hashkeys_last_upsert + hashkeys_upsert_min_delay) <=
-                timeit.default_timer()):
-            upsertKeys(args.hash_key, key_scheduler, db_updates_queue)
-            hashkeys_last_upsert = timeit.default_timer()
+    try:
+        while True:
+            if (args.hash_key is not None and
+                (hashkeys_last_upsert + hashkeys_upsert_min_delay) <=
+                    timeit.default_timer()):
+                upsertKeys(args.hash_key, key_scheduler, db_updates_queue)
+                hashkeys_last_upsert = timeit.default_timer()
 
-        odt_triggered = (args.on_demand_timeout > 0 and
-                         (now() - args.on_demand_timeout) > heartb[0])
-        if odt_triggered:
-            control_flags['on_demand'].set()
-            log.info('Searching paused due to inactivity...')
+            odt_triggered = (args.on_demand_timeout > 0 and
+                             (now() - args.on_demand_timeout) > heartb[0])
+            if odt_triggered:
+                control_flags['on_demand'].set()
+                log.info('Searching paused due to inactivity...')
 
-        # Wait here while scanning is paused.
-        while is_paused(control_flags):
+            # Wait here while scanning is paused.
+            while is_paused(control_flags):
+                for i in range(0, len(scheduler_array)):
+                    scheduler_array[i].scanning_paused()
+                # API Watchdog - Continue to check API version.
+                if not args.no_version_check and not odt_triggered:
+                    api_check_time = check_forced_version(
+                        args, api_check_time, control_flags['api_watchdog'])
+                time.sleep(1)
+
+            # If a new location has been passed to us, get the most recent one.
+            if not new_location_queue.empty():
+                log.info('New location caught, moving search grid.')
+                try:
+                    while True:
+                        current_location = new_location_queue.get_nowait()
+                except Empty:
+                    pass
+
+                step_distance = 0.45 if args.no_pokemon else 0.07
+
+                locations = generate_hive_locations(
+                    current_location, step_distance,
+                    args.step_limit, len(scheduler_array))
+
+                for i in range(0, len(scheduler_array)):
+                    scheduler_array[i].location_changed(locations[i],
+                                                        db_updates_queue)
+
+            # If there are no search_items_queue either the loop has finished or
+            # it's been cleared above.  Either way, time to fill it back up.
             for i in range(0, len(scheduler_array)):
-                scheduler_array[i].scanning_paused()
-            # API Watchdog - Continue to check API version.
+                if scheduler_array[i].time_to_refresh_queue():
+                    threadStatus['Overseer']['message'] = (
+                        'Search queue {} empty, scheduling ' +
+                        'more items to scan.').format(i)
+                    log.debug(
+                        'Search queue %d empty, scheduling more items to scan.', i)
+                    try:  # Can't have the scheduler die because of a DB deadlock.
+                        scheduler_array[i].schedule()
+                    except Exception as e:
+                        log.error(
+                            'Schedule creation had an Exception: {}.'.format(
+                                repr(e)))
+                        traceback.print_exc(file=sys.stdout)
+                        time.sleep(10)
+                else:
+                    threadStatus['Overseer']['message'] = scheduler_array[
+                        i].get_overseer_message()
+
+            # Let's update the total stats and add that info to message
+            # Added exception handler as dict items change
+            try:
+                update_total_stats(threadStatus, last_account_status)
+            except Exception as e:
+                log.error(
+                    'Update total stats had an Exception: {}.'.format(
+                        repr(e)))
+                traceback.print_exc(file=sys.stdout)
+                time.sleep(10)
+            threadStatus['Overseer']['message'] += '\n' + get_stats_message(
+                threadStatus, search_items_queue_array, db_updates_queue, wh_queue,
+                account_queue, account_failures, account_captchas)
+
+            # If enabled, display statistics information into logs on a
+            # periodic basis.
+            if args.stats_log_timer:
+                stats_timer += 1
+                if stats_timer == args.stats_log_timer:
+                    log.info(threadStatus['Overseer']['message'])
+                    stats_timer = 0
+
+            # Update Overseer statistics
+            threadStatus['Overseer']['accounts_failed'] = len(account_failures)
+            threadStatus['Overseer']['accounts_captcha'] = len(account_captchas)
+
+            # Send webhook updates when scheduler status changes.
+            if args.speed_scan and 'tth' in args.wh_types:
+                wh_status_update(args, threadStatus['Overseer'], wh_queue,
+                                 scheduler_array[0])
+
+            # API Watchdog - Check if Niantic forces a new API.
             if not args.no_version_check and not odt_triggered:
                 api_check_time = check_forced_version(
                     args, api_check_time, control_flags['api_watchdog'])
+
+            # Now we just give a little pause here.
             time.sleep(1)
-
-        # If a new location has been passed to us, get the most recent one.
-        if not new_location_queue.empty():
-            log.info('New location caught, moving search grid.')
-            try:
-                while True:
-                    current_location = new_location_queue.get_nowait()
-            except Empty:
-                pass
-
-            step_distance = 0.45 if args.no_pokemon else 0.07
-
-            locations = generate_hive_locations(
-                current_location, step_distance,
-                args.step_limit, len(scheduler_array))
-
-            for i in range(0, len(scheduler_array)):
-                scheduler_array[i].location_changed(locations[i],
-                                                    db_updates_queue)
-
-        # If there are no search_items_queue either the loop has finished or
-        # it's been cleared above.  Either way, time to fill it back up.
-        for i in range(0, len(scheduler_array)):
-            if scheduler_array[i].time_to_refresh_queue():
-                threadStatus['Overseer']['message'] = (
-                    'Search queue {} empty, scheduling ' +
-                    'more items to scan.').format(i)
-                log.debug(
-                    'Search queue %d empty, scheduling more items to scan.', i)
-                try:  # Can't have the scheduler die because of a DB deadlock.
-                    scheduler_array[i].schedule()
-                except Exception as e:
-                    log.error(
-                        'Schedule creation had an Exception: {}.'.format(
-                            repr(e)))
-                    traceback.print_exc(file=sys.stdout)
-                    time.sleep(10)
-            else:
-                threadStatus['Overseer']['message'] = scheduler_array[
-                    i].get_overseer_message()
-
-        # Let's update the total stats and add that info to message
-        # Added exception handler as dict items change
-        try:
-            update_total_stats(threadStatus, last_account_status)
-        except Exception as e:
-            log.error(
-                'Update total stats had an Exception: {}.'.format(
-                    repr(e)))
-            traceback.print_exc(file=sys.stdout)
-            time.sleep(10)
-        threadStatus['Overseer']['message'] += '\n' + get_stats_message(
-            threadStatus, search_items_queue_array, db_updates_queue, wh_queue,
-            account_queue, account_failures, account_captchas)
-
-        # If enabled, display statistics information into logs on a
-        # periodic basis.
-        if args.stats_log_timer:
-            stats_timer += 1
-            if stats_timer == args.stats_log_timer:
-                log.info(threadStatus['Overseer']['message'])
-                stats_timer = 0
-
-        # Update Overseer statistics
-        threadStatus['Overseer']['accounts_failed'] = len(account_failures)
-        threadStatus['Overseer']['accounts_captcha'] = len(account_captchas)
-
-        # Send webhook updates when scheduler status changes.
-        if args.speed_scan and 'tth' in args.wh_types:
-            wh_status_update(args, threadStatus['Overseer'], wh_queue,
-                             scheduler_array[0])
-
-        # API Watchdog - Check if Niantic forces a new API.
-        if not args.no_version_check and not odt_triggered:
-            api_check_time = check_forced_version(
-                args, api_check_time, control_flags['api_watchdog'])
-
-        # Now we just give a little pause here.
-        time.sleep(1)
+    except (KeyboardInterrupt, SystemExit):
+        if args.pgpool_url is not None:
+            account_sets.release_all() # release all HLVL to PGPool
 
 
 def get_scheduler_tth_found_pct(scheduler):
