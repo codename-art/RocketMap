@@ -50,7 +50,7 @@ def get_account(args, account_queue, status):
                 account = pgpool_request_accounts(args, count=1)
                 if not account:
                     msg = "Could not request account from PGPool (none left?). Retrying in "\
-                          + args.pgpool_retry_interval + " seconds."
+                          + str(args.pgpool_retry_interval) + " seconds."
                     status['message'] = msg
                     log.warning(msg)
                     time.sleep(args.pgpool_retry_interval)
