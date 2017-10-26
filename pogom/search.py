@@ -778,6 +778,9 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
     # is failing too often, and probably banned.
     # This reinitializes the API and grabs a new account from the queue.
     while True:
+        # set username to catch error before account assigment
+        account = {'username': None}
+        api = None
         try:
             # Force storing of previous worker info to keep consistency.
             if 'starttime' in status:
@@ -1219,7 +1222,8 @@ def search_worker_thread(args, account_queue, account_sets, account_failures,
                 'with fresh account. See logs for details.').format(
                     account['username'])
             traceback.print_exc(file=sys.stdout)
-            account_failed(args, account_failures, account, status, api, repr(e))
+            if account['username'] is not None:
+                account_failed(args, account_failures, account, status, api, repr(e))
             time.sleep(args.scan_delay)
 
 
