@@ -789,6 +789,7 @@ class AccountSet(object):
             # Readability.
             account_set = self.sets[set_name]
             account_set.remove(account)
+            account['level'] = account.get('level', 30)
             account_failed(args, None, account, status, None, reason)
             new_account = pgpool_request_accounts(args, highlvl=True, count=1)
             new_account['from_pgpool'] = True
