@@ -754,10 +754,6 @@ class AccountSet(object):
                 if account.get('captcha', False):
                     continue
 
-                # Make sure it's not captcha'd.
-                if account.get('missed', 0) > 5:
-                    continue
-
                 # Check if we're below speed limit for account.
                 last_scanned = account.get('last_scanned', False)
 
@@ -801,3 +797,6 @@ class AccountSet(object):
             for set in self.sets:
                 for acc in set:
                     self.release(acc)
+
+class AccountShadowBannedException(Exception):
+    pass

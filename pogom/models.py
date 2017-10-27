@@ -32,7 +32,8 @@ from .utils import (get_pokemon_name, get_pokemon_rarity, get_pokemon_types,
 from .transform import transform_from_wgs_to_gcj, get_new_coords
 from .customLog import printPokemon
 
-from .account import check_login, setup_api, pokestop_spinnable, spin_pokestop, account_failed
+from .account import check_login, setup_api, pokestop_spinnable, spin_pokestop, account_failed, \
+    AccountShadowBannedException
 from .proxy import get_new_proxy
 from .apiRequests import encounter
 
@@ -2467,6 +2468,10 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
                           + 'account %s: %d.', pokemon_id,
                           hlvl_account['username'],
                           enc_responses['ENCOUNTER'].status)
+                hlvl_account['rareless_scans'] = hlvl_account.get('rareless_scans', 0) + 1
+                if hlvl_account['rareless_scans'] > args.max_missed:
+                    hlvl_account['shadowbanned'] = True
+                    raise AccountShadowBannedException('The accaunt got shadowban')
             else:
                 pokemon_info = enc_responses[
                     'ENCOUNTER'].wild_pokemon.pokemon_data

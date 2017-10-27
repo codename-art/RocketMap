@@ -71,24 +71,19 @@ def pgpool_update(account, status, api=None, release=False, reason=None):
         data.update({
             'captcha': account['captcha']
         })
-    if 'missed' in status:
-        data['rareless_scans'] = status['missed']
-        if status['missed'] > args.max_missed:
-            data['shadowbanned'] = True
-        else:
-            data['shadowbanned'] = False
-    if 'banned' in account:
-        data['banned'] = account['banned']
-    else:
-        data['banned'] = False
 
-    if 'warning' in account:
-        data.update({
-            'warn': account['warning'],
-            # 'banned': account.is_banned(),
-            # 'ban_flag': account.get_state('banned')
-            # 'tutorial_state': data.get('tutorial_state'),
-        })
+    data['rareless_scans'] = status.get('missed', 0)
+    data['shadowbanned'] = account.get('shadowbanned', False) or data['rareless_scans'] > args.max_missed
+    data['banned'] = account.get('banned', False)
+    data['warning'] = account.get('warning', False)
+
+    # if 'warning' in account:
+    #     data.update({
+    #         'warn': account['warning'],
+    #         'banned': account.is_banned(),
+    #         'ban_flag': account.get_state('banned')
+    #         'tutorial_state': data.get('tutorial_state'),
+    #     })
     if 'level' in account:
         data.update({
             'level': account['level'],
