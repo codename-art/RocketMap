@@ -72,7 +72,7 @@ def pgpool_update(account, status, api=None, release=False, reason=None):
             'captcha': account['captcha']
         })
 
-    data['rareless_scans'] = status.get('missed', 0)
+    data['rareless_scans'] = max(status.get('missed', 0), account.get('rareless_scans', 0))
     data['shadowbanned'] = account.get('shadowbanned', False) or data['rareless_scans'] > args.max_missed
     data['banned'] = account.get('banned', False)
     data['warning'] = account.get('warning', False)
