@@ -2487,10 +2487,10 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
 
                 result = pokemon_info
 
-                # We're done with the encounter. If it's from an
-                # AccountSet, release account back to the pool.
-                if using_accountset:
-                    account_sets.release(hlvl_account)
+            # We're done with the encounter. If it's from an
+            # AccountSet, release account back to the pool.
+            if using_accountset:
+                account_sets.release(hlvl_account)
 
 
     except Exception as e:
