@@ -2465,14 +2465,15 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
 
             if ('ENCOUNTER' in enc_responses and
                     enc_responses['ENCOUNTER'].status != 1):
-                log.error('There was an error encountering Pokemon ID %s with '
-                          + 'account %s: %d.', pokemon_id,
-                          hlvl_account['username'],
-                          enc_responses['ENCOUNTER'].status)
                 hlvl_account['rareless_scans'] = hlvl_account['rareless_scans'] + 1
+                log.error('There was an error encountering Pokemon ID %s with '
+                          + 'account %s: %d. Total %d errors in a row/', pokemon_id,
+                          hlvl_account['username'],
+                          enc_responses['ENCOUNTER'].status,
+                          hlvl_account['rareless_scans'])
                 if hlvl_account['rareless_scans'] > args.max_missed:
                     hlvl_account['shadowbanned'] = True
-                    raise AccountShadowBannedException('The accaunt got shadowban')
+                    raise AccountShadowBannedException('The account got shadowban')
             else:
                 hlvl_account['rareless_scans'] = 0
                 pokemon_info = enc_responses[
