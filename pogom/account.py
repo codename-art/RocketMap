@@ -790,7 +790,7 @@ class AccountSet(object):
             new_account = pgpool_request_accounts(args, highlvl=True, count=1)
             new_account['from_pgpool'] = True
             account_set.append(new_account)
-            log.warning("L30 accout replased %s -> %s", account['username'], new_account['username'])
+            log.warning("L30 accout replaced %s -> %s", account['username'], new_account['username'])
 
     def release_all(self):
         with self.next_lock:

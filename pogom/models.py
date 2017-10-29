@@ -2380,6 +2380,7 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
         else:
             # Get account to use for IV and CP scanning.
             hlvl_account = account_sets.next('30', scan_location)
+            hlvl_account['rareless_scans'] = 0
             using_accountset = True
 
         time.sleep(args.encounter_delay)
@@ -2468,11 +2469,12 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
                           + 'account %s: %d.', pokemon_id,
                           hlvl_account['username'],
                           enc_responses['ENCOUNTER'].status)
-                hlvl_account['rareless_scans'] = hlvl_account.get('rareless_scans', 0) + 1
+                hlvl_account['rareless_scans'] = hlvl_account['rareless_scans'] + 1
                 if hlvl_account['rareless_scans'] > args.max_missed:
                     hlvl_account['shadowbanned'] = True
                     raise AccountShadowBannedException('The accaunt got shadowban')
             else:
+                hlvl_account['rareless_scans'] = 0
                 pokemon_info = enc_responses[
                     'ENCOUNTER'].wild_pokemon.pokemon_data
                 # Logging: let the user know we succeeded.
