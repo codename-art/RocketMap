@@ -2380,7 +2380,7 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
         else:
             # Get account to use for IV and CP scanning.
             hlvl_account = account_sets.next('30', scan_location)
-            hlvl_account['rareless_scans'] = 0
+            hlvl_account['rareless_scans'] = hlvl_account.get('rareless_scans', 0)
             using_accountset = True
 
         time.sleep(args.encounter_delay)
@@ -2467,7 +2467,7 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
                     enc_responses['ENCOUNTER'].status != 1):
                 hlvl_account['rareless_scans'] = hlvl_account['rareless_scans'] + 1
                 log.error('There was an error encountering Pokemon ID %s with '
-                          + 'account %s: %d. Total %d errors in a row/', pokemon_id,
+                          + 'account %s: %d. Total %d errors in a row.', pokemon_id,
                           hlvl_account['username'],
                           enc_responses['ENCOUNTER'].status,
                           hlvl_account['rareless_scans'])
