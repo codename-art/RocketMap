@@ -2498,7 +2498,7 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
         log.exception('There was an error encountering Pokemon ID %s with ' +
                       'account %s: %s.',
                       pokemon_id,
-                      hlvl_account['username'],
+                      hlvl_account.get('username', 'NONE'),
                       e)
 
 
