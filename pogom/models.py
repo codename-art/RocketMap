@@ -2364,7 +2364,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
 def encounter_pokemon(args, pokemon, account, api, account_sets, status,
                       key_scheduler):
     using_accountset = False
-    hlvl_account = None
+    hlvl_account = {}
     pokemon_id = None
     result = False
     scan_location = None
@@ -2498,7 +2498,7 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
         log.exception('There was an error encountering Pokemon ID %s with ' +
                       'account %s: %s.',
                       pokemon_id,
-                      hlvl_account['username'],
+                      hlvl_account.get('username', 'NONE'),
                       e)
 
 
