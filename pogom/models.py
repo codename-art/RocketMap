@@ -2380,7 +2380,6 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
         else:
             # Get account to use for IV and CP scanning.
             hlvl_account = account_sets.next('30', scan_location)
-            hlvl_account['rareless_scans'] = hlvl_account.get('rareless_scans', 0)
             using_accountset = True
 
         time.sleep(args.encounter_delay)
@@ -2390,6 +2389,8 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
             log.error('No L30 accounts are available, please' +
                       ' consider adding more. Skipping encounter.')
             return False
+
+        hlvl_account['rareless_scans'] = hlvl_account.get('rareless_scans', 0)
 
         # Logging.
         log.info('Encountering Pokemon ID %s with account %s at %s, %s.',
