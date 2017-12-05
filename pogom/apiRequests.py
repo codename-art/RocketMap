@@ -15,8 +15,8 @@ class AccountBannedException(Exception):
     pass
 
 
-def send_generic_request(req, account, settings=False, buddy=True, inbox=True):
-    req.check_challenge()
+def send_generic_request(req, account, settings=True, buddy=True, inbox=True):
+    #req.check_challenge()
     req.get_hatched_eggs()
     req.get_inventory(last_timestamp_ms=account['last_timestamp_ms'])
     req.check_awarded_badges()
