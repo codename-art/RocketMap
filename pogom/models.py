@@ -2444,13 +2444,13 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
             if 'CHECK_CHALLENGE' in enc_responses:
                 captcha_url = enc_responses['CHECK_CHALLENGE'].challenge_url
 
-            # Throw warning but finish parsing.
-            if len(captcha_url) > 1:
-                # Flag account.
-                hlvl_account['captcha'] = True
-                log.error('Account %s encountered a captcha.' +
-                          ' Account will not be used.',
-                          hlvl_account['username'])
+                # Throw warning but finish parsing.
+                if len(captcha_url) > 1:
+                    # Flag account.
+                    hlvl_account['captcha'] = True
+                    log.error('Account %s encountered a captcha.' +
+                              ' Account will not be used.',
+                              hlvl_account['username'])
 
             if ('ENCOUNTER' in enc_responses and
                     enc_responses['ENCOUNTER'].status != 1):
