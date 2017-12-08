@@ -662,6 +662,9 @@ class LocationAltitude(LatLongModel):
                                   null=True)
     altitude = DoubleField()
 
+
+    weather = SmallIntegerField(default=0)
+
     class Meta:
         indexes = ((('latitude', 'longitude'), False),)
 
@@ -753,8 +756,6 @@ class ScannedLocation(LatLongModel):
     # If band 1 is 10.4 minutes, and band 4 is 34.0 minutes, midpoint
     # is 0.4 minutes in minsec.
     width = SmallIntegerField(default=0)
-
-    weather = SmallIntegerField(default=0)
 
     class Meta:
         indexes = ((('latitude', 'longitude'), False),)
@@ -1876,7 +1877,8 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
     # Consolidate the individual lists in each cell into two lists of Pokemon
     # and a list of forts.
     cells = map_dict['responses']['GET_MAP_OBJECTS'].map_cells
-    weather = map_dict['responses']['GET_MAP_OBJECTS'].client_weather.gameplay_weather.gameplay_condition
+    # weather = map_dict['responses']['GET_MAP_OBJECTS'].client_weather.gameplay_weather.gameplay_condition
+    log.info(map_dict['responses']['GET_MAP_OBJECTS'].__dict__)
 
     # Get the level for the pokestop spin, and to send to webhook.
     level = account['level']
@@ -1927,7 +1929,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
     ScannedLocation.update_band(scan_loc, now_date)
     just_completed = not done_already and scan_loc['done']
 
-    scan_loc.weather = weather
+    step_location.weather = weather
 
     if wild_pokemon and not args.no_pokemon:
         encounter_ids = [b64encode(str(p.encounter_id))
@@ -3117,7 +3119,7 @@ def database_migrate(db, old_ver):
 
     if old_ver < 22:
         migrate(
-            migrator.add_column('scannedlocation', 'weather',
+            migrator.add_column('locationaltitude', 'weather',
                                 IntegerField(null=True)),
         )
 
