@@ -1878,7 +1878,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
     # and a list of forts.
     cells = map_dict['responses']['GET_MAP_OBJECTS'].map_cells
     # weather = map_dict['responses']['GET_MAP_OBJECTS'].client_weather.gameplay_weather.gameplay_condition
-    log.info(map_dict['responses']['GET_MAP_OBJECTS'].__dict__)
+    log.info(dir(map_dict['responses']['GET_MAP_OBJECTS']))
 
     # Get the level for the pokestop spin, and to send to webhook.
     level = account['level']
