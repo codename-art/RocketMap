@@ -18,7 +18,7 @@ class AccountBannedException(Exception):
 def send_generic_request(req, account, settings=True, buddy=True, inbox=True):
     req.check_challenge()
     req.get_hatched_eggs()
-    req.get_inventory(last_timestamp_ms=account['last_timestamp_ms'])
+    req.get_holo_inventory(last_timestamp_ms=account['last_timestamp_ms'])
     req.check_awarded_badges()
 
     if settings:
@@ -52,7 +52,7 @@ def send_generic_request(req, account, settings=True, buddy=True, inbox=True):
     if 'responses' not in resp:
         return resp
     responses = [
-        'GET_HATCHED_EGGS', 'GET_INVENTORY', 'CHECK_AWARDED_BADGES',
+        'GET_HATCHED_EGGS', 'GET_HOLO_INVENTORY', 'CHECK_AWARDED_BADGES',
         'DOWNLOAD_SETTINGS', 'GET_BUDDY_WALKED', 'GET_INBOX'
     ]
     for item in responses:
@@ -88,15 +88,15 @@ def parse_remote_config(account, api_response):
 
 # Parse player stats and inventory into account.
 def parse_inventory(account, api_response):
-    if 'GET_INVENTORY' not in api_response['responses']:
+    if 'GET_HOLO_INVENTORY' not in api_response['responses']:
         return
-    inventory = api_response['responses']['GET_INVENTORY']
+    inventory = api_response['responses']['GET_HOLO_INVENTORY']
     parsed_items = 0
     parsed_pokemons = 0
     parsed_eggs = 0
     parsed_incubators = 0
     account['last_timestamp_ms'] = api_response['responses'][
-        'GET_INVENTORY'].inventory_delta.new_timestamp_ms
+        'GET_HOLO_INVENTORY'].inventory_delta.new_timestamp_ms
 
     for item in inventory.inventory_delta.inventory_items:
         item_data = item.inventory_item_data
