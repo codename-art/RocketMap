@@ -43,14 +43,24 @@
 
 <div id="map"></div>
 
+<!-- Load JS libs before custom scripts. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/js/select2.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.12/js/jquery.dataTables.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/push.js/1.0.4/push.min.js"></script>
+<script src="{{ url_for('static', filename='dist/js/vendor/markerclusterer.min.js').lstrip('/') }}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert/1.1.3/sweetalert.min.js"></script>
 
 <script type="application/javascript">
+    var centerLat = {{lat}};
+    var centerLng = {{lng}};
     var data = {{ data }};
 </script>
 
 
-<!-- Load JS libs before custom scripts. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment-with-locales.min.js"></script>
 <!-- Load custom JS before status.js so it can change Store defaults. -->
 <script src="{{ url_for('static', filename='dist/js/app.min.js').lstrip('/') }}"></script>
 <script src="{{ url_for('static', filename='dist/js/map.common.min.js').lstrip('/') }}"></script>
