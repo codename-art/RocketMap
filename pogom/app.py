@@ -14,6 +14,7 @@ from s2sphere import LatLng
 from pogom.utils import get_args
 from bisect import bisect_left
 
+from pogom.weather import parse_weather
 from .models import (Pokemon, Gym, Pokestop, ScannedLocation,
                      MainWorker, WorkerStatus, Token, HashKeys,
                      SpawnPoint, Weather)
@@ -80,8 +81,17 @@ class Pogom(Flask):
         return send_from_directory('static/images/appicons', 'favicon.ico')
 
     def get_weather(self, page=1):
+
+        args = get_args()
         db_weathers = Weather.get_weathers()
-        return jsonify(db_weathers)
+        parsed_cells = parse_weather(db_weathers)
+        return render_template('weather.html',
+                               lat=self.current_location[0],
+                               lng=self.current_location[1],
+                               gmaps_key=args.gmaps_key,
+                               data=jsonify(parsed_cells)
+                               )
+
         #return jsonify(db_weathers)
 
         def td(cell):
