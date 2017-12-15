@@ -85,11 +85,18 @@ class Pogom(Flask):
         args = get_args()
         db_weathers = Weather.get_weathers()
         parsed_cells = parse_weather(db_weathers)
+
+        visibility_flags = {
+            'custom_css': args.custom_css,
+            'custom_js': args.custom_js
+        }
+
         return render_template('weather.html',
                                lat=self.current_location[0],
                                lng=self.current_location[1],
                                gmaps_key=args.gmaps_key,
-                               data=jsonify(parsed_cells)
+                               data=jsonify(parsed_cells),
+                               show=visibility_flags
                                )
 
         #return jsonify(db_weathers)
