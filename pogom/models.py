@@ -3231,8 +3231,6 @@ def database_migrate(db, old_ver):
         migrate(
             migrator.add_column('pokemon', 'weather_id',
                                 SmallIntegerField(null=True)),
-            migrator.add_column('lurepokemon', 'weather_id',
-                                SmallIntegerField(null=True))
         )
     # Always log that we're done.
     log.info('Schema upgrade complete.')
