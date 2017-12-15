@@ -7,6 +7,7 @@ import math
 
 from flask import Flask, abort, jsonify, render_template, request,\
     make_response, send_from_directory
+from flask import json
 from flask.json import JSONEncoder
 from flask_compress import Compress
 from datetime import datetime
@@ -95,7 +96,7 @@ class Pogom(Flask):
                                lat=self.current_location[0],
                                lng=self.current_location[1],
                                gmaps_key=args.gmaps_key,
-                               data=jsonify(parsed_cells),
+                               data=json.dumps(parsed_cells),
                                show=visibility_flags
                                )
 
