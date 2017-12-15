@@ -1902,8 +1902,12 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
 
     # Consolidate the individual lists in each cell into two lists of Pokemon
     # and a list of forts.
+    log.info(dir(map_dict['responses']['GET_MAP_OBJECTS']))
     cells = map_dict['responses']['GET_MAP_OBJECTS'].map_cells
-    cellweathers = map_dict['GET_MAP_OBJECTS'].client_weather
+    try:
+        cellweathers = map_dict['GET_MAP_OBJECTS'].client_weather
+    except:
+        pass
     worldtime = map_dict['GET_MAP_OBJECTS'].time_of_day
 
     # Get the level for the pokestop spin, and to send to webhook.
