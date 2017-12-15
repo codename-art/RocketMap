@@ -41,6 +41,8 @@
 </header>
 
 
+<div id="map"></div>
+
 
 <script type="application/javascript">
     var data = {{ data }};
@@ -57,7 +59,7 @@
     <script src="{{ url_for('static', filename='dist/js/custom.min.js').lstrip('/') }}"></script>
 {% endif %}
 <script src="{{ url_for('static', filename='dist/js/map.min.js').lstrip('/') }}"></script>
-<script src="{{ url_for('static', filename='dist/js/weather.min.js').lstrip('/') }}"></script>
 <script defer src="https://maps.googleapis.com/maps/api/js?key={{ gmaps_key }}&amp;callback=initMap&amp;libraries=places,geometry"></script>
+<script src="{{ url_for('static', filename='dist/js/weather.min.js').lstrip('/') }}"></script>
 </body>
 </html>
