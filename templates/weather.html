@@ -57,18 +57,16 @@
 <script type="application/javascript">
     var centerLat = {{lat}};
     var centerLng = {{lng}};
-    var data = {{ data }};
+    var data = {{ data|safe }};
 </script>
 
 
 <!-- Load custom JS before status.js so it can change Store defaults. -->
 <script src="{{ url_for('static', filename='dist/js/app.min.js').lstrip('/') }}"></script>
-<script src="{{ url_for('static', filename='dist/js/map.common.min.js').lstrip('/') }}"></script>
 <!-- Load custom JS before map.js so it can change Store defaults. -->
 {% if show.custom_js %}
     <script src="{{ url_for('static', filename='dist/js/custom.min.js').lstrip('/') }}"></script>
 {% endif %}
-<script src="{{ url_for('static', filename='dist/js/map.min.js').lstrip('/') }}"></script>
 <script defer src="https://maps.googleapis.com/maps/api/js?key={{ gmaps_key }}&amp;callback=initMap&amp;libraries=places,geometry"></script>
 <script src="{{ url_for('static', filename='dist/js/weather.min.js').lstrip('/') }}"></script>
 </body>
