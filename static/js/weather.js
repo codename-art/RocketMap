@@ -1,5 +1,5 @@
 initMap();
-new google.maps.Polygon({
+var bermudaTriangle = new google.maps.Polygon({
     paths: data.vertices,
     strokeColor: '#FF0000',
     strokeOpacity: 0.8,
