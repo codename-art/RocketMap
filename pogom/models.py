@@ -1910,6 +1910,7 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
     # except:
     #     pass
 
+
     # Get the level for the pokestop spin, and to send to webhook.
     level = account['level']
     # Use separate level indicator for our L30 encounters.
@@ -1939,7 +1940,8 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
         wild_pokemon_count += len(cell.wild_pokemons)
         forts_count += len(cell.forts)
 
-        # 0.85.1 Map Weather
+    # 0.85.1 Map Weather
+
     for i, cell in enumerate(cellweathers):
         # Parse Map Weather Information
         s2_cell_id = cell.s2_cell_id
