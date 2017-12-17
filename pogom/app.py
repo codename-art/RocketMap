@@ -15,7 +15,7 @@ from s2sphere import LatLng
 from pogom.utils import get_args
 from bisect import bisect_left
 
-from pogom.weather import parse_weather
+from pogom.weather import get_weather_cells, get_s2_coverage, get_weather_alerts
 from .models import (Pokemon, Gym, Pokestop, ScannedLocation,
                      MainWorker, WorkerStatus, Token, HashKeys,
                      SpawnPoint, Weather)
@@ -82,25 +82,9 @@ class Pogom(Flask):
         return send_from_directory('static/images/appicons', 'favicon.ico')
 
     def get_weather(self, page=1):
-
-        args = get_args()
         db_weathers = Weather.get_weathers()
-        parsed_cells = parse_weather(db_weathers)
 
-        visibility_flags = {
-            'custom_css': args.custom_css,
-            'custom_js': args.custom_js
-        }
-
-        return render_template('weather.html',
-                               lat=self.current_location[0],
-                               lng=self.current_location[1],
-                               gmaps_key=args.gmaps_key,
-                               data=json.dumps(parsed_cells),
-                               show=visibility_flags
-                               )
-
-        #return jsonify(db_weathers)
+        return jsonify(db_weathers)
 
         def td(cell):
             return "<td>{}</td>".format(cell)
@@ -498,6 +482,15 @@ class Pogom(Flask):
                   args.status_page_password):
                 d['main_workers'] = MainWorker.get_all()
                 d['workers'] = WorkerStatus.get_all()
+
+        if request.args.get('weather', 'false') == 'true':
+            d['weather'] = get_weather_cells()
+
+        if request.args.get('s2cells', 'false') == 'true':
+            d['s2cells'] = get_s2_coverage(swLat, swLng, neLat, neLng)
+
+        if request.args.get('weatherAlerts', 'false') == 'true':
+            d['weatherAlerts'] = get_weather_alerts()
         return jsonify(d)
 
     def loc(self):

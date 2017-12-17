@@ -247,6 +247,37 @@
               </label>
             </div>
               {% endif %}
+
+            <div class="form-control switch-container">
+                <h3>Weather</h3>
+                <div class="onoffswitch">
+                    <input id="weather-cells-switch" type="checkbox" name="ranges-switch" class="onoffswitch-checkbox">
+                    <label class="onoffswitch-label" for="weather-cells-switch">
+                        <span class="switch-label" data-on="On" data-off="Off"></span>
+                        <span class="switch-handle"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="form-control switch-container">
+                <h3>s2cells</h3>
+                <div class="onoffswitch">
+                    <input id="s2cells-switch" type="checkbox" name="ranges-switch" class="onoffswitch-checkbox">
+                    <label class="onoffswitch-label" for="s2cells-switch">
+                        <span class="switch-label" data-on="On" data-off="Off"></span>
+                        <span class="switch-handle"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="form-control switch-container">
+                <h3>weather Alerts</h3>
+                <div class="onoffswitch">
+                    <input id="weather-alerts-switch" type="checkbox" name="ranges-switch" class="onoffswitch-checkbox">
+                    <label class="onoffswitch-label" for="weather-alerts-switch">
+                        <span class="switch-label" data-on="On" data-off="Off"></span>
+                        <span class="switch-handle"></span>
+                    </label>
+                </div>
+            </div>
           </div>
 
           <h3><i class="fa fa-location-arrow fa-fw"></i>Location &amp; Search Settings</h3>
@@ -474,6 +505,7 @@
       {% endif %}
     <script src="{{ url_for('static', filename='dist/js/map.min.js').lstrip('/') }}"></script>
     <script src="{{ url_for('static', filename='dist/js/stats.min.js').lstrip('/') }}"></script>
+    <script src="{{ url_for('static', filename='dist/js/weather.min.js').lstrip('/') }}"></script>
     <script defer src="https://maps.googleapis.com/maps/api/js?key={{ gmaps_key }}&amp;callback=initMap&amp;libraries=places,geometry"></script>
     <script async src='https://www.google-analytics.com/analytics.js'></script>
   </body>
