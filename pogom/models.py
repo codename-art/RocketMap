@@ -131,6 +131,7 @@ class Pokemon(LatLongModel):
     height = FloatField(null=True)
     gender = SmallIntegerField(null=True)
     form = SmallIntegerField(null=True)
+    weather_id = SmallIntegerField(null=True)
     last_modified = DateTimeField(
         null=True, index=True, default=datetime.utcnow)
 
@@ -2022,12 +2023,12 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
             worldtime =  'NIGHT'
         log.info('GamePlay Condition: %s - %s.', worldtime, gameplayweather)
 
-    log.debug(weather)
-    log.info('Upserted %d weather details',
-                          len(weather))
+        log.debug(weather)
+        log.info('Upserted %d weather details',
+                              len(weather))
 
-    if weather:
-        db_update_queue.put((Weather, weather))
+        if weather:
+            db_update_queue.put((Weather, weather))
 
 
     # If there are no wild or nearby Pokemon...
@@ -2176,8 +2177,14 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
                 'height': None,
                 'weight': None,
                 'gender': p.pokemon_data.pokemon_display.gender,
-                'form': None
+                'form': None,
+                'weather_id' : None
             }
+
+            # Weather Pokemon Bonus
+            weather = p.pokemon_data.pokemon_display.weather_boosted_condition
+            if weather >= 1:
+                pokemon[p.encounter_id]['weather_id'] = (weather)
 
             if pokemon_id in args.rares_list:
                 status['missed'] = 0
@@ -2216,7 +2223,8 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
                         'seconds_until_despawn': seconds_until_despawn,
                         'spawn_start': start_end[0],
                         'spawn_end': start_end[1],
-                        'player_level': encounter_level
+                        'player_level': encounter_level,
+                        'weather': p.pokemon_data.pokemon_display.weather_boosted_condition
                     })
                     if wh_poke['cp_multiplier'] is not None:
                         wh_poke.update({
@@ -2467,8 +2475,8 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
         db_update_queue.put((ScanSpawnPoint, scan_spawn_points))
         if sightings:
             db_update_queue.put((SpawnpointDetectionData, sightings))
-    if weather:
-        db_update_queue.put((Weather, weather))
+    # if weather:
+    #     db_update_queue.put((Weather, weather))
 
     if not nearby_pokemon and not wild_pokemon:
         # After parsing the forts, we'll mark this scan as bad due to
@@ -2773,6 +2781,8 @@ def db_updater(q, db):
                 model, data = q.get()
 
                 start_timer = default_timer()
+                if isinstance(model, Weather):
+                    log.info("Wether data: %s", data)
                 bulk_upsert(model, data, db)
                 q.task_done()
 
@@ -2793,7 +2803,7 @@ def db_updater(q, db):
                         q.qsize())
 
         except Exception as e:
-            log.exception('Exception in db_updater: %s', repr(e))
+            log.exception('Exception in db_updater%s', repr(e))
             time.sleep(5)
 
 
