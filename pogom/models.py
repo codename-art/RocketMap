@@ -2023,12 +2023,12 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
             worldtime =  'NIGHT'
         log.info('GamePlay Condition: %s - %s.', worldtime, gameplayweather)
 
-    log.debug(weather)
-    log.info('Upserted %d weather details',
-                          len(weather))
+        log.debug(weather)
+        log.info('Upserted %d weather details',
+                              len(weather))
 
-    if weather:
-        db_update_queue.put((Weather, weather))
+        if weather:
+            db_update_queue.put((Weather, weather))
 
 
     # If there are no wild or nearby Pokemon...
@@ -2475,8 +2475,8 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
         db_update_queue.put((ScanSpawnPoint, scan_spawn_points))
         if sightings:
             db_update_queue.put((SpawnpointDetectionData, sightings))
-    if weather:
-        db_update_queue.put((Weather, weather))
+    # if weather:
+    #     db_update_queue.put((Weather, weather))
 
     if not nearby_pokemon and not wild_pokemon:
         # After parsing the forts, we'll mark this scan as bad due to
@@ -2781,6 +2781,8 @@ def db_updater(q, db):
                 model, data = q.get()
 
                 start_timer = default_timer()
+                if isinstance(model, Weather):
+                    log.info("Wether data: %s", data)
                 bulk_upsert(model, data, db)
                 q.task_done()
 
@@ -2801,7 +2803,7 @@ def db_updater(q, db):
                         q.qsize())
 
         except Exception as e:
-            log.exception('Exception in db_updater: %s', repr(e))
+            log.exception('Exception in db_updater%s', repr(e))
             time.sleep(5)
 
 
