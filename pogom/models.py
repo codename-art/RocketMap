@@ -131,6 +131,7 @@ class Pokemon(LatLongModel):
     height = FloatField(null=True)
     gender = SmallIntegerField(null=True)
     form = SmallIntegerField(null=True)
+    weather_id = SmallIntegerField(null=True)
     last_modified = DateTimeField(
         null=True, index=True, default=datetime.utcnow)
 
@@ -2176,8 +2177,14 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
                 'height': None,
                 'weight': None,
                 'gender': p.pokemon_data.pokemon_display.gender,
-                'form': None
+                'form': None,
+                'weather_id' : None
             }
+
+            # Weather Pokemon Bonus
+            weather = p.pokemon_data.pokemon_display.weather_boosted_condition
+            if weather >= 1:
+                pokemon[p.encounter_id]['weather_id'] = (weather)
 
             if pokemon_id in args.rares_list:
                 status['missed'] = 0
@@ -2216,7 +2223,8 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
                         'seconds_until_despawn': seconds_until_despawn,
                         'spawn_start': start_end[0],
                         'spawn_end': start_end[1],
-                        'player_level': encounter_level
+                        'player_level': encounter_level,
+                        'weather': p.pokemon_data.pokemon_display.weather_boosted_condition
                     })
                     if wh_poke['cp_multiplier'] is not None:
                         wh_poke.update({
