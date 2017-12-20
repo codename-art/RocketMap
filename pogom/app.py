@@ -187,6 +187,9 @@ class Pogom(Flask):
 
         return start <= dottedQuadToNum(ip) <= end
 
+    def set_db_updates_queue(self, db_updates_queue):
+        self.db_updates_queue = db_updates_queue
+
     def set_control_flags(self, control):
         self.control_flags = control
 
