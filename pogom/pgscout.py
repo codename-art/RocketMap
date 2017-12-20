@@ -25,8 +25,7 @@ def pgscout_encounter(p):
         'encounter_id': p.encounter_id,
         'spawn_point_id': p.spawnpoint_id,
         'latitude': p.latitude,
-        'longitude': p.longitude,
-        'weather': p.weather_boosted_condition
+        'longitude': p.longitude
     }
     try:
         r = requests.get(args.pgscout_url, params=params)
