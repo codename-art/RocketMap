@@ -25,6 +25,7 @@ from cachetools import TTLCache
 from cachetools import cached
 from timeit import default_timer
 
+from pogom.pgscout import pgscout_encounter
 from .utils import (get_pokemon_name, get_pokemon_rarity, get_pokemon_types,
                     get_args, cellid, in_radius, date_secs, clock_between,
                     get_move_name, get_move_damage, get_move_energy,
@@ -1862,7 +1863,6 @@ def perform_pgscout(p):
     pkm.spawnpoint_id = p.spawn_point_id
     pkm.latitude = p.latitude
     pkm.longitude = p.longitude
-    pkm.weather_boosted_condition = p.pokemon_data.pokemon_display.weather_boosted_condition
     scout_result = pgscout_encounter(pkm)
     if scout_result['success']:
         log.info(
