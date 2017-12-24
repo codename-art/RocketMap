@@ -2023,6 +2023,10 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
                  GetMapObjectsResponse.TimeOfDay.Name(worldtime),
                  GameplayWeather.WeatherCondition.Name(gameplayweather))
 
+        if 'weather' in args.wh_types:
+            wh_weather = weather[s2_cell_id].copy()
+            wh_update_queue.put(('weather', wh_weather))
+
     log.debug(weather)
     log.info('Upserted %d weather details.',
              len(weather))

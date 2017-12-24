@@ -432,7 +432,7 @@ def get_args():
         help=('Defines the type of messages to send to webhooks.'),
         choices=[
             'pokemon', 'gym', 'raid', 'egg', 'tth', 'gym-info',
-            'pokestop', 'lure', 'captcha'
+            'pokestop', 'lure', 'captcha', 'weather'
         ],
         action='append',
         default=[])
