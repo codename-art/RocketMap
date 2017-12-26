@@ -78,7 +78,7 @@ def parse_remote_config(account, api_response):
     remote_config = api_response['responses']['DOWNLOAD_REMOTE_CONFIG_VERSION']
     if remote_config.result == 0:
         account['banned'] = True
-        raise AccountBannedException('The account has a temporal ban')
+        raise AccountBannedException('The account is temporarily banned')
 
     asset_time = remote_config.asset_digest_timestamp_ms / 1000000
     template_time = remote_config.item_templates_timestamp_ms / 1000
@@ -104,8 +104,7 @@ def parse_inventory(account, api_response):
     parsed_pokemons = 0
     parsed_eggs = 0
     parsed_incubators = 0
-    account['last_timestamp_ms'] = api_response['responses'][
-        'GET_HOLO_INVENTORY'].inventory_delta.new_timestamp_ms
+    account['last_timestamp_ms'] = inventory.inventory_delta.new_timestamp_ms
 
     for item in inventory.inventory_delta.inventory_items:
         item_data = item.inventory_item_data

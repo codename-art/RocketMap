@@ -125,7 +125,7 @@ def captcha_solver_thread(args, account_queue, account_captchas, hash_key,
 
     proxy_url = False
     if args.proxy:
-        # Try to fetch a new proxy
+        # Try to fetch a new proxy.
         proxy_num, proxy_url = get_new_proxy(args)
 
         if proxy_url:
@@ -134,8 +134,8 @@ def captcha_solver_thread(args, account_queue, account_captchas, hash_key,
 
     location = account['last_location']
 
-    if not args.no_jitter:
-        # Jitter location before uncaptcha attempt
+    if args.jitter:
+        # Jitter location before uncaptcha attempt.
         location = jitter_location(location)
 
     api.set_position(*location)
