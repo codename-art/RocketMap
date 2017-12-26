@@ -29,7 +29,10 @@
     "grunt-unused": "latest",
     "grunt-usemin": "latest",
     "grunt-zip": "^0.17.1",
-    "jit-grunt": "^0.10.0"
+    "jit-grunt": "^0.10.0",
+    "browserify": "latest",
+    "grunt-browserify": "latest",
+    "s2-geometry": "1.2.9"
   },
   "scripts": {
     "build": "grunt build",

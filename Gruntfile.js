@@ -51,6 +51,13 @@ module.exports = function (grunt) {
                 }
             }
         },
+        browserify: {
+            dist: {
+                files: {
+                    'static/dist/js/weather.br.js': 'static/dist/js/weather.built.js'
+                }
+            }
+        },
         uglify: {
             options: {
                 banner: '/*\n <%= pkg.name %> <%= grunt.template.today("yyyy-mm-dd") %> \n*/\n',
@@ -71,7 +78,7 @@ module.exports = function (grunt) {
                     'static/dist/js/custom.min.js': 'static/dist/js/custom.built.js',
                     'static/dist/js/vendor/markerclusterer.min.js': 'static/dist/js/vendor/markerclusterer.built.js',
                     'static/dist/js/serviceWorker.min.js': 'static/dist/js/serviceWorker.built.js',
-                    'static/dist/js/weather.min.js': 'static/dist/js/weather.built.js'
+                    'static/dist/js/weather.min.js': 'static/dist/js/weather.br.js'
                 }
             }
         },
@@ -149,8 +156,9 @@ module.exports = function (grunt) {
         }
 
     })
+    grunt.loadNpmTasks('grunt-browserify');
 
-    grunt.registerTask('js-build', ['newer:babel', 'newer:uglify'])
+    grunt.registerTask('js-build', ['newer:babel', 'browserify', 'newer:uglify'])
     grunt.registerTask('css-build', ['newer:sass', 'newer:cssmin'])
     grunt.registerTask('js-lint', ['newer:eslint'])
     grunt.registerTask('json', ['newer:minjson'])
@@ -158,4 +166,5 @@ module.exports = function (grunt) {
     grunt.registerTask('build', ['clean', 'js-build', 'css-build', 'json', 'unzip'])
     grunt.registerTask('lint', ['js-lint'])
     grunt.registerTask('default', ['build', 'watch'])
+
 }
