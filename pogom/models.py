@@ -1877,8 +1877,9 @@ def perform_pgscout(p):
 
 
 # todo: this probably shouldn't _really_ be in "models" anymore, but w/e.
-def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
-              key_scheduler, api, status, now_date, account, account_sets):
+def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
+              wh_update_queue, key_scheduler, api, status, now_date, account,
+              account_sets):
     pokemon = {}
     pokestops = {}
     gyms = {}
@@ -1944,10 +1945,9 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
             log.warning('No nearby or wild Pokemon but there are visible '
                         'gyms or pokestops. Possible speed violation.')
 
-    scan_loc = ScannedLocation.get_by_loc(step_location)
-    done_already = scan_loc['done']
-    ScannedLocation.update_band(scan_loc, now_date)
-    just_completed = not done_already and scan_loc['done']
+    done_already = scan_location['done']
+    ScannedLocation.update_band(scan_location, now_date)
+    just_completed = not done_already and scan_location['done']
 
     if wild_pokemon and not args.no_pokemon:
         encounter_ids = [b64encode(str(p.encounter_id))
@@ -2003,9 +2003,9 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                     sp['latest_seen'] = d_t_secs
                     sp['earliest_unseen'] = d_t_secs
 
-            scan_spawn_points[scan_loc['cellid'] + sp['id']] = {
+            scan_spawn_points[scan_location['cellid'] + sp['id']] = {
                 'spawnpoint': sp['id'],
-                'scannedlocation': scan_loc['cellid']}
+                'scannedlocation': scan_location['cellid']}
             if not sp['last_scanned']:
                 log.info('New Spawn Point found.')
                 new_spawn_points.append(sp)
@@ -2013,16 +2013,16 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                 # If we found a new spawnpoint after the location was already
                 # fully scanned then either it's new, or we had a bad scan.
                 # Either way, rescan the location.
-                if scan_loc['done'] and not just_completed:
+                if scan_location['done'] and not just_completed:
                     log.warning('Location was fully scanned, and yet a brand '
                                 'new spawnpoint found.')
                     log.warning('Redoing scan of this location to identify '
                                 'new spawnpoint.')
-                    ScannedLocation.reset_bands(scan_loc)
+                    ScannedLocation.reset_bands(scan_location)
 
             if (not SpawnPoint.tth_found(sp) or sighting['tth_secs'] or
-                    not scan_loc['done'] or just_completed):
-                SpawnpointDetectionData.classify(sp, scan_loc, now_secs,
+                    not scan_location['done'] or just_completed):
+                SpawnpointDetectionData.classify(sp, scan_location, now_secs,
                                                  sighting)
                 sightings[p.encounter_id] = sighting
 
@@ -2313,8 +2313,8 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
         if args.pokestop_spinning:
             for f in forts:
                 # Spin Pokestop with 50% chance.
-                if f.type == 1 and pokestop_spinnable(f, step_location):
-                    spin_pokestop(api, account, args, f, step_location)
+                if f.type == 1 and pokestop_spinnable(f, scan_coords):
+                    spin_pokestop(api, account, args, f, scan_coords)
 
         # Helping out the GC.
         del forts
@@ -2332,7 +2332,10 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
 
     # Look for spawnpoints within scan_loc that are not here to see if we
     # can narrow down tth window.
-    for sp in ScannedLocation.linked_spawn_points(scan_loc['cellid']):
+    for sp in ScannedLocation.linked_spawn_points(scan_location['cellid']):
+        if sp['missed_count'] > 5:
+                continue
+
         if sp['id'] in sp_id_list:
             # Don't overwrite changes from this parse with DB version.
             sp = spawn_points[sp['id']]
@@ -2340,7 +2343,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
             # If the cell has completed, we need to classify all
             # the SPs that were not picked up in the scan
             if just_completed:
-                SpawnpointDetectionData.classify(sp, scan_loc, now_secs)
+                SpawnpointDetectionData.classify(sp, scan_location, now_secs)
                 spawn_points[sp['id']] = sp
             if SpawnpointDetectionData.unseen(sp, now_secs):
                 spawn_points[sp['id']] = sp
@@ -2357,7 +2360,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                 log.info('hidden period, or Niantic has removed '
                          'spawnpoint.')
 
-        if (not SpawnPoint.tth_found(sp) and scan_loc['done'] and
+        if (not SpawnPoint.tth_found(sp) and scan_location['done'] and
                 (now_secs - sp['latest_seen'] -
                  args.spawn_delay) % 3600 < 60):
             log.warning('Spawnpoint %s was unable to locate a TTH, with '
@@ -2365,13 +2368,13 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue,
                         (now_secs - sp['latest_seen']) % 3600)
             log.info('Restarting current 15 minute search for TTH.')
             if sp['id'] not in sp_id_list:
-                SpawnpointDetectionData.classify(sp, scan_loc, now_secs)
+                SpawnpointDetectionData.classify(sp, scan_location, now_secs)
             sp['latest_seen'] = (sp['latest_seen'] - 60) % 3600
             sp['earliest_unseen'] = (
                 sp['earliest_unseen'] + 14 * 60) % 3600
             spawn_points[sp['id']] = sp
 
-    db_update_queue.put((ScannedLocation, {0: scan_loc}))
+    db_update_queue.put((ScannedLocation, {0: scan_location}))
 
     if pokemon:
         db_update_queue.put((Pokemon, pokemon))

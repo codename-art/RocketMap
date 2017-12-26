@@ -7,8 +7,6 @@ from pgoapi.utilities import f2i, get_cell_ids
 from pgoapi.hash_server import BadHashRequestException, HashingOfflineException
 from pgpool import pgpool_update
 
-from .transform import jitter_location
-
 log = logging.getLogger(__name__)
 
 
@@ -19,7 +17,7 @@ class AccountBannedException(Exception):
 def send_generic_request(req, account, settings=True, buddy=True, inbox=True):
     req.check_challenge()
     req.get_hatched_eggs()
-    req.get_inventory(last_timestamp_ms=account['last_timestamp_ms'])
+    req.get_holo_inventory(last_timestamp_ms=account['last_timestamp_ms'])
     req.check_awarded_badges()
 
     if settings:
@@ -53,7 +51,7 @@ def send_generic_request(req, account, settings=True, buddy=True, inbox=True):
     if 'responses' not in resp:
         return resp
     responses = [
-        'GET_HATCHED_EGGS', 'GET_INVENTORY', 'CHECK_AWARDED_BADGES',
+        'GET_HATCHED_EGGS', 'GET_HOLO_INVENTORY', 'CHECK_AWARDED_BADGES',
         'DOWNLOAD_SETTINGS', 'GET_BUDDY_WALKED', 'GET_INBOX'
     ]
     for item in responses:
@@ -80,7 +78,7 @@ def parse_remote_config(account, api_response):
     remote_config = api_response['responses']['DOWNLOAD_REMOTE_CONFIG_VERSION']
     if remote_config.result == 0:
         account['banned'] = True
-        raise AccountBannedException('The account has a temporal ban')
+        raise AccountBannedException('The account is temporarily banned')
 
     asset_time = remote_config.asset_digest_timestamp_ms / 1000000
     template_time = remote_config.item_templates_timestamp_ms / 1000
@@ -99,15 +97,14 @@ def parse_remote_config(account, api_response):
 
 # Parse player stats and inventory into account.
 def parse_inventory(account, api_response):
-    if 'GET_INVENTORY' not in api_response['responses']:
+    if 'GET_HOLO_INVENTORY' not in api_response['responses']:
         return
-    inventory = api_response['responses']['GET_INVENTORY']
+    inventory = api_response['responses']['GET_HOLO_INVENTORY']
     parsed_items = 0
     parsed_pokemons = 0
     parsed_eggs = 0
     parsed_incubators = 0
-    account['last_timestamp_ms'] = api_response['responses'][
-        'GET_INVENTORY'].inventory_delta.new_timestamp_ms
+    account['last_timestamp_ms'] = inventory.inventory_delta.new_timestamp_ms
 
     for item in inventory.inventory_delta.inventory_items:
         item_data = item.inventory_item_data
@@ -247,24 +244,13 @@ def level_up_rewards(api, account):
 
 
 @catchRequestException('downloading map')
-def get_map_objects(api, account, position, no_jitter=False):
-    # Create scan_location to send to the api based off of position
-    # because tuples aren't mutable.
-    if no_jitter:
-        # Just use the original coordinates.
-        scan_location = position
-    else:
-        # Jitter it, just a little bit.
-        scan_location = jitter_location(position)
-        log.debug('Jittered to: %f/%f/%f', scan_location[0], scan_location[1],
-                  scan_location[2])
-
-    cell_ids = get_cell_ids(scan_location[0], scan_location[1])
-    timestamps = [0, ] * len(cell_ids)
+def get_map_objects(api, account, location):
+    cell_ids = get_cell_ids(location[0], location[1])
+    timestamps = [0, ]*len(cell_ids)
     req = api.create_request()
     req.get_map_objects(
-        latitude=f2i(scan_location[0]),
-        longitude=f2i(scan_location[1]),
+        latitude=f2i(location[0]),
+        longitude=f2i(location[1]),
         since_timestamp_ms=timestamps,
         cell_id=cell_ids)
     return send_generic_request(req, account)
