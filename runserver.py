@@ -148,7 +148,7 @@ def validate_assets(args):
 
     root_path = os.path.dirname(__file__)
     if not os.path.exists(os.path.join(root_path, 'static/dist')):
-        log.critical(assets_error_log)
+        log.critical(assets_error_log + ' [static/dist]')
         return False
 
     static_path = os.path.join(root_path, 'static/js')
@@ -161,6 +161,7 @@ def validate_assets(args):
                     os.path.getmtime(source_path) >
                     os.path.getmtime(generated_path)):
                 log.critical(assets_error_log)
+                log.critical('File "'+file+'": generated path ' + generated_path + ', source path ' + source_path)
                 return False
 
     # You need custom image files now.
