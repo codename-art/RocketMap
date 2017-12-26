@@ -743,8 +743,13 @@ function pokemonLabel(pokemon) {
 
     var weatherBoost = ''
     if (weather_id) {
+        var weatherChanged = false
+        if(mapData.weather){
+            var actualWeatherId = getWeatherByCoords(latitude, longitude)
+            weatherChanged = actualWeatherId !== weather_id
+        }
         weatherBoost = `<div class='pokemon big'>Weather Boost:
-            <img src='static/images/weather/${weatherImages[weather_id]}' style="width: 24px; vertical-align: middle;">${weatherTexts[weather_id]}
+            <img src='static/images/weather/${weatherImages[weather_id]}' style="width: 24px; vertical-align: middle; ${weatherChanged ? 'filter: hue-rotate(90deg);' : ''}">
             </div>`
     }
 

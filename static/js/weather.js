@@ -1,3 +1,5 @@
+var S2 = require('s2-geometry').S2
+
 /**
  * Parses info about weather cell and draws icon
  * @param i index from $.each()
@@ -218,6 +220,9 @@ var $weatherInfo = document.querySelector('#weatherInfo')
  * Update weather icon on top bar if there is single cell on the screen
  */
 function updateMainCellWeather() {
+    if($weatherInfo == null){
+        return
+    }
     // remove old weather icon
     while ($weatherInfo.firstChild) {
         $weatherInfo.removeChild($weatherInfo.firstChild)
@@ -317,4 +322,21 @@ function createJstsPolygon(geometryFactory, path) {
     }
     var shell = geometryFactory.createLinearRing(coordinates)
     return geometryFactory.createPolygon(shell)
+}
+
+
+/**
+ * Find weather info for cell based on location
+ * @param lat
+ * @param lng
+ * @returns {*}
+ */
+function getCellWeatherData(lat, lng){
+    var key = S2.latLngToKey(lat, lng, 10)
+    var id = S2.keyToId(key)
+    return mapData.weather[id]
+}
+
+function getWeatherByCoords(lat, lng) {
+    return getCellWeatherData(lat, lng).gameplay_weather
 }
