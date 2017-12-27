@@ -220,7 +220,7 @@ var $weatherInfo = document.querySelector('#weatherInfo')
  * Update weather icon on top bar if there is single cell on the screen
  */
 function updateMainCellWeather() {
-    if($weatherInfo == null){
+    if ($weatherInfo == null) {
         return
     }
     // remove old weather icon
@@ -334,9 +334,25 @@ function createJstsPolygon(geometryFactory, path) {
 function getCellWeatherData(lat, lng){
     var key = S2.latLngToKey(lat, lng, 10)
     var id = S2.keyToId(key)
-    return mapData.weather[id]
+    return mapData.weather[id.toString()]
 }
 
 function getWeatherByCoords(lat, lng) {
-    return getCellWeatherData(lat, lng).gameplay_weather
+    var cellWeatherData = getCellWeatherData(lat, lng)
+    return cellWeatherData != null ? cellWeatherData.gameplay_weather : null
+}
+
+function getWorldTimeByCoords(lat, lng) {
+    var cellWeatherData = getCellWeatherData(lat, lng)
+    return cellWeatherData != null ? cellWeatherData.world_time : null
+}
+
+export {
+    getWeatherByCoords,
+    getWorldTimeByCoords,
+    processWeather,
+    processS2Cell,
+    processWeatherAlerts,
+    getS2CellBounds,
+    updateMainCellWeather
 }

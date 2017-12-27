@@ -685,7 +685,7 @@ function pokemonLabel(pokemon) {
     var ratingAttack = pokemon.rating_attack
     var ratingDefense = pokemon.rating_defense
     var previous_id = pokemon.previous_id
-    var weather_id = pokemon.weather_id
+    var weatherId = pokemon.weather_id
     var spawnpoint_id = pokemon.spawnpoint_id
     var encounterIdLong = atob(encounterId)
 
@@ -751,6 +751,11 @@ function pokemonLabel(pokemon) {
         weatherBoost = `<div class='pokemon big'>Weather Boost:
             <img src='static/images/weather/${weatherImages[weather_id]}' style="width: 24px; vertical-align: middle; ${weatherChanged ? 'filter: hue-rotate(90deg);' : ''}">
             </div>`
+
+        weatherString += build_weather(weatherId)
+        if (weatherChanged) {
+            weatherString = weatherString.replace('<span>', '<span style="text-decoration: line-through">')
+        }
     }
 
     if (gender == 'L') {
@@ -1928,10 +1933,10 @@ function showInBoundsMarkers(markers, type) {
                 if (map.getBounds().contains(marker.getPosition())) {
                     show = true
                 }
-            } else if(type == 's2cell'){
-                 if (map.getBounds().intersects(getS2CellBounds(item))) {
-                     show = true
-                 }
+            } else if (type !== 's2cell'){
+                if (map.getBounds().intersects(weather.getS2CellBounds(item))) {
+                    show = true
+                }
              }
         }
 
@@ -2458,16 +2463,16 @@ function updateMap() {
             item['lure_pokemon'] = lurePokemons[pokestopId]
           }
         })
+        $.each(result.weather, weather.processWeather)
         processPokemons(result.pokemons)
         $.each(result.lurePokemons, processLurePokemons)
         $.each(result.pokestops, processPokestop)
         $.each(result.gyms, processGym)
         $.each(result.scanned, processScanned)
         $.each(result.spawnpoints, processSpawnpoint)
-        $.each(result.weather, processWeather)
-        $.each(result.s2cells, processS2Cell)
-        processWeatherAlerts(result.weatherAlerts)
-        updateMainCellWeather()
+        $.each(result.s2cells, weather.processS2Cell)
+        weather.processWeatherAlerts(result.weatherAlerts)
+        weather.updateMainCellWeather()
         // showInBoundsMarkers(mapData.pokemons, 'pokemon')
         showInBoundsMarkers(mapData.lurePokemons, 'lurePokemon')
         showInBoundsMarkers(mapData.gyms, 'gym')
