@@ -32,6 +32,8 @@
     "jit-grunt": "^0.10.0",
     "browserify": "latest",
     "grunt-browserify": "latest",
+    "babelify": "latest",
+    "babel-core": "latest",
     "s2-geometry": "1.2.9"
   },
   "scripts": {

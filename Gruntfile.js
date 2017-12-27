@@ -52,8 +52,15 @@ module.exports = function (grunt) {
             }
         },
         browserify: {
+            options: {
+                sourceMap: true,
+                browserifyOptions: {
+                    standalone: 'weather'
+                }
+            },
             dist: {
                 files: {
+                    // 'static/dist/js/map.br.js': 'static/dist/js/map.built.js',
                     'static/dist/js/weather.br.js': 'static/dist/js/weather.built.js'
                 }
             }
