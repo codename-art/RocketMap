@@ -742,20 +742,16 @@ function pokemonLabel(pokemon) {
     </div>`
 
     var weatherBoost = ''
-    if (weather_id) {
+    if (weatherId) {
         var weatherChanged = false
-        if(mapData.weather){
-            var actualWeatherId = getWeatherByCoords(latitude, longitude)
-            weatherChanged = actualWeatherId !== weather_id
+        if (mapData.weather) {
+            var actualWeatherId = weather.getWeatherByCoords(latitude, longitude)
+            weatherChanged = (actualWeatherId != null) &&  (actualWeatherId !== weatherId)
         }
         weatherBoost = `<div class='pokemon big'>Weather Boost:
-            <img src='static/images/weather/${weatherImages[weather_id]}' style="width: 24px; vertical-align: middle; ${weatherChanged ? 'filter: hue-rotate(90deg);' : ''}">
+            <img src='static/images/weather/${weatherImages[weatherId]}' style="width: 24px; vertical-align: middle; ${weatherChanged ? 'filter: hue-rotate(90deg);' : ''}">
+            <span  ${weatherChanged ? 'style="text-decoration: line-through;"' : ''}>${weatherTexts[weatherId]}</span>
             </div>`
-
-        weatherString += build_weather(weatherId)
-        if (weatherChanged) {
-            weatherString = weatherString.replace('<span>', '<span style="text-decoration: line-through">')
-        }
     }
 
     if (gender == 'L') {
