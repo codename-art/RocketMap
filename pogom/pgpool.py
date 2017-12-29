@@ -38,7 +38,7 @@ def pgpool_request_accounts(init_args, count=None, highlvl=False, initial=False)
         'shadow': init_args.pgpool_shadow_banned
     }
 
-    r = requests.get("{}/account/request".format(init_args.pgpool_url), params=request).json()
+    r = requests.get("{}/account/request".format(init_args.pgpool_url), params=request, timeout=180).json()
     if init and count == 1:
         # If requested first chunk of accounts on scanner initialization,
         # it expects list instead of single object

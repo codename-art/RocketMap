@@ -709,7 +709,13 @@ def get_args():
         args.accounts_L30 = []
         if args.pgpool_url:
             # Request initial number of workers from PGPool
-            args.pgpool_initial_accounts = pgpool_request_accounts(args, initial=True)
+            for i in range(0, 5):
+                try:
+                    args.pgpool_initial_accounts = pgpool_request_accounts(args, initial=True)
+                    break
+                except requests.exceptions.Timeout:
+                    log.error('Pool init timeout')
+
             # Request L30 accounts from PGPool
             if args.highlvl_workers > 0:
                 args.accounts_L30 = pgpool_request_accounts(args, highlvl=True, initial=True)
