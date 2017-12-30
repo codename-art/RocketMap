@@ -713,7 +713,7 @@ def get_args():
                 try:
                     args.pgpool_initial_accounts = pgpool_request_accounts(args, initial=True)
                     break
-                except requests.exceptions.Timeout:
+                except requests.exceptions.ConnectionError:
                     log.warning('Pool init timeout')
 
             # Request L30 accounts from PGPool
