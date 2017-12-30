@@ -212,11 +212,13 @@ def main():
     # Make sure exceptions get logged.
     sys.excepthook = handle_exception
 
+
+    set_log_and_verbosity(log)
+
     args = get_args()
     from pogom.pgpool import pgpool_init
     pgpool_init(args)
 
-    set_log_and_verbosity(log)
 
     # Abort if only-server and no-server are used together
     if args.only_server and args.no_server:
