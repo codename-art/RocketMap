@@ -714,7 +714,9 @@ def get_args():
                     args.pgpool_initial_accounts = pgpool_request_accounts(args, initial=True)
                     break
                 except (requests.exceptions.ConnectionError, requests.exceptions.ReadTimeout):
-                    log.warning('Pool init timeout')
+                    print('Pool init timeout')
+            if args.pgpool_initial_accounts is None:
+                raise Exception('Can\'t load accounts fromm PGPool')
 
             # Request L30 accounts from PGPool
             if args.highlvl_workers > 0:
