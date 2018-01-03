@@ -327,7 +327,7 @@ function getMainS2Cell() {
     ]
     var jstsViewport = createJstsPolygon(geometryFactory, viewportPath)
     var viewportArea = jstsViewport.getArea()
-    var maxCoverageData = {}
+    var maxCoverageData = null
     $.each(mapData.weather, function (i, s2cell) {
         var jstsS2cell = createJstsPolygon(geometryFactory, s2cell.vertices)
         var area = jstsViewport.intersection(jstsS2cell).getArea()
