@@ -13,6 +13,7 @@ from flask import Flask, abort, jsonify, render_template, request,\
 from flask.json import JSONEncoder
 from flask_compress import Compress
 
+from pogom.weather import get_weather_cells, get_s2_coverage, get_weather_alerts
 from .models import (Pokemon, Gym, Pokestop, ScannedLocation,
                      MainWorker, WorkerStatus, Token, HashKeys,
                      SpawnPoint)
@@ -432,6 +433,13 @@ class Pogom(Flask):
                 else:
                     d['main_workers'] = MainWorker.get_all()
                     d['workers'] = WorkerStatus.get_all()
+
+                if request.args.get('weather', 'false') == 'true':
+                    d['weather'] = get_weather_cells(swLat, swLng, neLat, neLng)
+                if request.args.get('s2cells', 'false') == 'true':
+                    d['s2cells'] = get_s2_coverage(swLat, swLng, neLat, neLng)
+                if request.args.get('weatherAlerts', 'false') == 'true':
+                    d['weatherAlerts'] = get_weather_alerts(swLat, swLng, neLat, neLng)
 
         return jsonify(d)
 
