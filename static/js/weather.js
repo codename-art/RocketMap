@@ -1,3 +1,7 @@
+/*global
+ map, jsts
+ */
+
 const weatherImages = {
     1: 'weather_sunny.png',
     2: 'weather_rain.png',
@@ -34,7 +38,7 @@ const alertTexts = {
  * @param item weather cell data
  * @returns {boolean}
  */
-function processWeather(i, item) {
+function processWeather(i, item) { // eslint-disable-line no-unused-vars
     if (!Store.get('showWeatherCells') || item.gameplay_weather == null) {
         return false
     }
@@ -61,7 +65,7 @@ function processWeather(i, item) {
  * @param item s2cell data
  * @returns {boolean}
  */
-function processS2Cell(i, item) {
+function processS2Cell(i, item) { // eslint-disable-line no-unused-vars
     if (!Store.get('showS2Cells')) {
         return false
     }
@@ -79,7 +83,7 @@ function processS2Cell(i, item) {
  * Do main work with array of weather alerts
  * @param weatherAlerts
  */
-function processWeatherAlerts(weatherAlerts) {
+function processWeatherAlerts(weatherAlerts) { // eslint-disable-line no-unused-vars
     deleteObsoleteWeatherAlerts(weatherAlerts)
     $.each(weatherAlerts, processWeatherAlert)
 }
@@ -230,7 +234,7 @@ function createCellAlert(item) {
  * @param s2Cell
  * @returns {google.maps.LatLngBounds}
  */
-function getS2CellBounds(s2Cell) {
+function getS2CellBounds(s2Cell) { // eslint-disable-line no-unused-vars
     var bounds = new google.maps.LatLngBounds()
     // iterate over the vertices
     $.each(s2Cell.vertices, function (i, latLng) {
@@ -247,7 +251,7 @@ var $weatherInfo = document.querySelector('#weatherInfo')
 /**
  * Update weather icon on top bar if there is single cell on the screen
  */
-function updateMainCellWeather() {
+function updateMainCellWeather() { // eslint-disable-line no-unused-vars
     if ($weatherInfo == null) {
         return // updating the top bar is not required if it does not exist
     }
