@@ -1,3 +1,8 @@
+/*global
+ getS2CellBounds, processWeather, processS2Cell, processWeatherAlerts, updateMainCellWeather
+ */
+// from weather js
+
 //
 // Global map.js variables
 //
