@@ -94,6 +94,7 @@ class Pogom(Flask):
         self.route("/robots.txt", methods=['GET'])(self.render_robots_txt)
         self.route("/serviceWorker.min.js", methods=['GET'])(
             self.render_service_worker_js)
+        self.route("/weather", methods=['GET'])(self.get_weather)
 
     def get_weather(self, page=1):
         db_weathers = Weather.get_weathers()
