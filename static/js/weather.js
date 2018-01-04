@@ -271,39 +271,35 @@ function updateMainCellWeather() { // eslint-disable-line no-unused-vars
     }
     var s2Cell = getMainS2Cell()
     if (s2Cell != null) {
-        var weatherimgUrl = getWeatherImageUrl(s2Cell, false)
-        var alertimgUrl = getalertImageUrl(s2Cell)
-        if (s2Cell.severity >= 1) {
-            // Alert Text
-            var alert = alertTexts[s2Cell.severity]
-            var alertText = document.createElement('span')
-            alertText.textContent ? alertText.textContent = weather : alertText.innerText = alert
-            alertText.setAttribute('style', 'font-size: 10px; position: relative; left: -2px;')
-            // Alert Icon
-            var alertIcon = document.createElement('img')
-            alertIcon.setAttribute('src', alertimgUrl)
-            alertIcon.setAttribute('style', 'height: 25px; vertical-align: middle;')
-            $weatherInfo.appendChild(alertIcon)
-            $weatherInfo.appendChild(alertText)
-        }
         // Weather Text
-        var weather = weatherTexts[s2Cell.gameplay_weather]
-        var weathertext = document.createElement('span')
-        weathertext.textContent ? weathertext.textContent = weather : weathertext.innerText = weather
-        weathertext.setAttribute('style', 'font-size: 10px; position: relative; left: -2px;')
+        var weatherText = document.createElement('span')
+        weatherText.textContent = weatherNames[s2Cell.gameplay_weather]
+        weatherText.setAttribute('style', 'font-size: 10px; position: relative; left: -2px;')
         // Weather Icon
-        var weathericon = document.createElement('img')
-        weathericon.setAttribute('src', weatherimgUrl)
-        weathericon.setAttribute('style', 'height: 25px; vertical-align: middle;')
+        var weatherIcon = document.createElement('img')
+        weatherIcon.setAttribute('src', getWeatherImageUrl(s2Cell, false))
+        weatherIcon.setAttribute('style', 'height: 25px; vertical-align: middle;')
         // Wind Text
-        var windDirection = degreesToCardinal(s2Cell.wind_direction)
         var windText = document.createElement('span')
-        windText.textContent ? windText.textContent = windDirection : windText.innerText = windDirection
+        windText.textContent = degreesToCardinal(s2Cell.wind_direction)
         windText.setAttribute('style', 'font-size: 10px; position: relative; left: -2px;')
         // Wind Icon
         var windIcon = document.createElement('img')
         windIcon.setAttribute('src', 'static/images/weather/wind_streaks.png')
         windIcon.setAttribute('style', 'height: 25px; vertical-align: middle;')
+
+        if (s2Cell.severity >= 1) {
+            // Alert Text
+            var alertText = document.createElement('span')
+            alertText.textContent = alertTexts[s2Cell.severity]
+            alertText.setAttribute('style', 'font-size: 10px; position: relative; left: -2px;')
+            // Alert Icon
+            var alertIcon = document.createElement('img')
+            alertIcon.setAttribute('src', getalertImageUrl(s2Cell))
+            alertIcon.setAttribute('style', 'height: 25px; vertical-align: middle;')
+            $weatherInfo.appendChild(alertIcon)
+            $weatherInfo.appendChild(alertText)
+        }
         // Make It Happen
         $weatherInfo.appendChild(weatherIcon)
         $weatherInfo.appendChild(weatherText)
