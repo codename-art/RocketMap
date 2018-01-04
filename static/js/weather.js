@@ -282,7 +282,7 @@ function updateMainCellWeather() { // eslint-disable-line no-unused-vars
         // Weather Icon
         var weatherIcon = document.createElement('img')
         weatherIcon.setAttribute('src', getWeatherImageUrl(s2Cell, false))
-        weatherIcon.setAttribute('style', 'height: 25px; vertical-align: middle;')
+        weatherIcon.setAttribute('style', 'height: 25px; vertical-align: middle; margin: 2px;')
         // Wind Text
         var windText = document.createElement('span')
         windText.textContent = degreesToCardinal(s2Cell.wind_direction)
@@ -290,7 +290,7 @@ function updateMainCellWeather() { // eslint-disable-line no-unused-vars
         // Wind Icon
         var windIcon = document.createElement('img')
         windIcon.setAttribute('src', 'static/images/weather/wind_streaks.png')
-        windIcon.setAttribute('style', 'height: 25px; vertical-align: middle;')
+        windIcon.setAttribute('style', 'height: 25px; vertical-align: middle; margin: 4px;')
 
         if (s2Cell.severity >= 1) {
             // Alert Text
