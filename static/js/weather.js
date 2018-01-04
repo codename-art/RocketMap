@@ -150,20 +150,24 @@ function safeDelMarker(item) {
  * @returns {*}
  */
 function getWeatherImageUrl(item, dark = true) {
-    var weatherImageUrl
+    var weatherImageUrl = 'static/images/weather/'
+    var image = null
     if (item.world_time === 2) { // night
         if (![1, 3].includes(item.gameplay_weather)) { // common icons for day and night
-            weatherImageUrl = 'static/images/weather/' + weatherImages[item.gameplay_weather]
+            image = weatherImages[item.gameplay_weather]
         } else { // clear and partly cloudy
-            weatherImageUrl = 'static/images/weather/' + weatherImages[item.gameplay_weather + 10]
+            image = weatherImages[item.gameplay_weather + 10]
         }
     } else {
-        weatherImageUrl = 'static/images/weather/' + weatherImages[item.gameplay_weather]
+        image = weatherImages[item.gameplay_weather]
+    }
+    if (image == null) {
+        image = 'weather_undefined.png'
     }
     if (!dark) {
-        weatherImageUrl = weatherImageUrl.replace('weather_', 'weather_light_')
+        image = image.replace('weather_', 'weather_light_')
     }
-    return weatherImageUrl
+    return weatherImageUrl + image
 }
 
 /**
@@ -273,7 +277,7 @@ function updateMainCellWeather() { // eslint-disable-line no-unused-vars
     if (s2Cell != null) {
         // Weather Text
         var weatherText = document.createElement('span')
-        weatherText.textContent = weatherNames[s2Cell.gameplay_weather]
+        weatherText.textContent = weatherNames[s2Cell.gameplay_weather] || 'unknown'
         weatherText.setAttribute('style', 'font-size: 10px; position: relative; left: -2px;')
         // Weather Icon
         var weatherIcon = document.createElement('img')
