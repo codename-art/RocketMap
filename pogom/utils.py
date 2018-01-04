@@ -880,6 +880,13 @@ def distance(pos1, pos2):
     return haversine((tuple(pos1))[0:2], (tuple(pos2))[0:2])
 
 
+def degrees_to_cardinal(d):
+    dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+            "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+    ix = int((d + 11.25)/22.5 - 0.02)
+    return dirs[ix % 16]
+
+
 # Return True if distance between two locs is less than distance in meters.
 def in_radius(loc1, loc2, radius):
     return distance(loc1, loc2) < radius
