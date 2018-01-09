@@ -289,17 +289,17 @@ def status_printer(threadStatus, account_failures, logmode, hash_key,
                         weather['fog_level'],
                         degrees_to_cardinal(weather['wind_direction']),
                         pgoapi.protos.pogoprotos.map.weather
-                            .gameplay_weather_pb2.GameplayWeather
-                            .WeatherCondition
-                            .Name(weather['gameplay_weather']),
+                        .gameplay_weather_pb2.GameplayWeather
+                        .WeatherCondition
+                        .Name(weather['gameplay_weather']),
                         pgoapi.protos.pogoprotos.map.weather
-                            .weather_alert_pb2.WeatherAlert.Severity.Name(
+                        .weather_alert_pb2.WeatherAlert.Severity.Name(
                             serverity
                         ),
                         warn,
                         pgoapi.protos.pogoprotos.networking.responses
-                            .get_map_objects_response_pb2.GetMapObjectsResponse
-                            .TimeOfDay.Name(weather['world_time']),
+                        .get_map_objects_response_pb2.GetMapObjectsResponse
+                        .TimeOfDay.Name(weather['world_time']),
                         str(weather['last_updated'])))
 
         # Print the status_text for the current screen.
@@ -602,7 +602,7 @@ def search_overseer_thread(args, new_location_queue, control_flags, heartb,
                             repr(e)))
                     traceback.print_exc(
                         file=pgoapi.protos.pogoprotos.networking.responses
-                            .get_map_objects_response_pb2.sys.stdout)
+                        .get_map_objects_response_pb2.sys.stdout)
                     time.sleep(10)
             else:
                 threadStatus['Overseer']['message'] = scheduler_array[
@@ -618,7 +618,7 @@ def search_overseer_thread(args, new_location_queue, control_flags, heartb,
                     repr(e)))
             traceback.print_exc(
                 file=pgoapi.protos.pogoprotos.networking.responses
-                    .get_map_objects_response_pb2.sys.stdout)
+                .get_map_objects_response_pb2.sys.stdout)
             time.sleep(10)
         threadStatus['Overseer']['message'] += '\n' + get_stats_message(
             threadStatus, search_items_queue_array, db_updates_queue, wh_queue,

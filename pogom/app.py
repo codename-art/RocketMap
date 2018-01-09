@@ -147,8 +147,8 @@ class Pogom(Flask):
             lines += td(degrees_to_cardinal(s['wind_direction']))
             lines += td(
                 pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2
-                    .GameplayWeather.WeatherCondition
-                    .Name(s['gameplay_weather'])
+                .GameplayWeather.WeatherCondition
+                .Name(s['gameplay_weather'])
             )
             if s['severity'] is None:
                 s['severity'] = 0
