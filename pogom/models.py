@@ -8,6 +8,7 @@ import sys
 import gc
 import time
 import math
+from base64 import b64encode
 
 from peewee import (InsertQuery, Check, CompositeKey, ForeignKeyField,
                     SmallIntegerField, IntegerField, CharField, DoubleField,
