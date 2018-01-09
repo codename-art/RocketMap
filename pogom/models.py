@@ -1,28 +1,31 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import logging
-import itertools
 import calendar
-import sys
 import gc
-import time
+import itertools
+import logging
 import math
+import time
+from datetime import datetime, timedelta
+from timeit import default_timer
 
+import pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2
+import pgoapi.protos.pogoprotos.networking.responses \
+    .get_map_objects_response_pb2
 import s2sphere
+from cachetools import TTLCache
+from cachetools import cached
 from peewee import (InsertQuery, Check, CompositeKey, ForeignKeyField,
                     SmallIntegerField, IntegerField, CharField, DoubleField,
                     BooleanField, DateTimeField, fn, DeleteQuery, FloatField,
                     TextField, BigIntegerField, PrimaryKeyField,
                     JOIN, OperationalError)
+from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import WeatherAlert
 from playhouse.flask_utils import FlaskDB
+from playhouse.migrate import migrate, MySQLMigrator
 from playhouse.pool import PooledMySQLDatabase
 from playhouse.shortcuts import RetryOperationalError, case
-from playhouse.migrate import migrate, MySQLMigrator
-from datetime import datetime, timedelta
-from cachetools import TTLCache
-from cachetools import cached
-from timeit import default_timer
 
 from .utils import (get_pokemon_name, get_pokemon_types,
                     get_args, cellid, in_radius, date_secs, clock_between,
@@ -1819,7 +1822,10 @@ class Weather(BaseModel):
     severity = SmallIntegerField(null=True, index=True, default=0)
     warn_weather = SmallIntegerField(null=True, index=True, default=0)
     world_time = SmallIntegerField(null=True, index=True, default=0)
-    last_updated = DateTimeField(default=datetime.utcnow, null=True, index=True)
+    last_updated = DateTimeField(
+        default=datetime.utcnow,
+        null=True,
+        index=True)
 
     @staticmethod
     def get_weathers():
@@ -1833,22 +1839,29 @@ class Weather(BaseModel):
 
     @staticmethod
     def get_weather_by_location(swLat, swLng, neLat, neLng, alert):
-        # We can filter by the center of a cell, this deltas can expand the viewport bounds
-        # So cells with center outside the viewport, but close to it can be rendered
-        # otherwise edges of cells that intersects with viewport won't be rendered
+        # We can filter by the center of a cell, this deltas can expand
+        # the viewport bounds
+        # So cells with center outside the viewport, but close to it
+        # can be rendered
+        # otherwise edges of cells that intersects with viewport
+        # won't be rendered
         lat_delta = 0.15
         lng_delta = 0.4
         if not alert:
-            query = Weather.select().where((Weather.latitude >= float(swLat) - lat_delta) &
-                                           (Weather.longitude >= float(swLng) - lng_delta) &
-                                           (Weather.latitude <= float(neLat) + lat_delta) &
-                                           (Weather.longitude <= float(neLng) + lng_delta)).dicts()
+            query = Weather.select().where(
+                (Weather.latitude >= float(swLat) - lat_delta) &
+                (Weather.longitude >= float(swLng) - lng_delta) &
+                (Weather.latitude <= float(neLat) + lat_delta) &
+                (Weather.longitude <= float(neLng) + lng_delta)
+            ).dicts()
         else:
-            query = Weather.select().where((Weather.latitude >= float(swLat) - lat_delta) &
-                                           (Weather.longitude >= float(swLng) - lng_delta) &
-                                           (Weather.latitude <= float(neLat) + lat_delta) &
-                                           (Weather.longitude <= float(neLng) + lng_delta) &
-                                           (Weather.severity.is_null(False))).dicts()
+            query = Weather.select().where(
+                (Weather.latitude >= float(swLat) - lat_delta) &
+                (Weather.longitude >= float(swLng) - lng_delta) &
+                (Weather.latitude <= float(neLat) + lat_delta) &
+                (Weather.longitude <= float(neLng) + lng_delta) &
+                (Weather.severity.is_null(False))
+            ).adicts()
         weathers = []
         for w in query:
             weathers.append(w)
@@ -1962,6 +1975,8 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
         wild_pokemon_count += len(cell.wild_pokemons)
         forts_count += len(cell.forts)
 
+    lat = 0
+    lng = 0
     # 0.85.1 Map Weather
     for i, cell in enumerate(cellweathers):
         # Parse Map Weather Information
@@ -2020,8 +2035,11 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
                  display_weather.wind_direction)
 
         log.info('GamePlay Conditions: %s - %s Bonus.',
-                 GetMapObjectsResponse.TimeOfDay.Name(worldtime),
-                 GameplayWeather.WeatherCondition.Name(gameplayweather))
+                 pgoapi.protos.pogoprotos.networking.responses
+                 .get_map_objects_response_pb2.GetMapObjectsResponse
+                 .TimeOfDay.Name(worldtime),
+                 pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2
+                 .GameplayWeather.WeatherCondition.Name(gameplayweather))
 
         if 'weather' in args.wh_types:
             wh_weather = weather[s2_cell_id].copy()

@@ -20,41 +20,38 @@ Search Architecture:
 import logging
 import math
 import os
-import sys
-import traceback
 import random
-import time
-import requests
-import schedulers
-import terminalsize
-import timeit
 import threading
-import s2sphere
-
-from datetime import datetime
-from threading import Thread, Lock
-from queue import Queue, Empty
-from sets import Set
+import time
+import timeit
+import traceback
 from collections import deque
+from datetime import datetime
+from distutils.version import StrictVersion
+from sets import Set
+from threading import Thread, Lock
+
+import \
+    pgoapi.protos.pogoprotos.networking.responses.get_map_objects_response_pb2
+import requests
+from cachetools import TTLCache
+from pgoapi.hash_server import HashServer
+from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import WeatherAlert
+from queue import Queue, Empty
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
-from distutils.version import StrictVersion
-from cachetools import TTLCache
 
-from pgoapi.hash_server import HashServer
+import schedulers
+import terminalsize
+from .account import setup_api, check_login, AccountSet
+from .apiRequests import gym_get_info, get_map_objects as gmo
+from .captcha import captcha_overseer_thread, handle_captcha
 from .models import (parse_map, GymDetails, parse_gyms, MainWorker,
                      WorkerStatus, HashKeys, ScannedLocation, Weather)
-from .utils import now, distance, degrees_to_cardinal
-from .transform import get_new_coords
-from .account import setup_api, check_login, AccountSet
-from .captcha import captcha_overseer_thread, handle_captcha
 from .proxy import get_new_proxy
-from .apiRequests import gym_get_info, get_map_objects as gmo
+from .transform import get_new_coords
 from .transform import jitter_location
-
-from pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2 import *
-from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import *
-from pgoapi.protos.pogoprotos.networking.responses.get_map_objects_response_pb2 import *
+from .utils import now, distance, degrees_to_cardinal
 
 log = logging.getLogger(__name__)
 
@@ -134,6 +131,7 @@ def status_printer(threadStatus, account_failures, logmode, hash_key,
         # Create a list to hold all the status lines, so they can be printed
         # all at once to reduce flicker.
         status_text = []
+        total_pages = 0
 
         if display_type[0] == 'workers':
 
@@ -265,7 +263,8 @@ def status_printer(threadStatus, account_failures, logmode, hash_key,
             status_text.append(
                 '----------------------------------------------------------')
 
-            status = '{:22} | {:7} | {:6} | {:6} | {:6} | {:5} | {:7} | {:14} | {:8} | {:4} | {:5} | {:9}'
+            status = '{:22} | {:7} | {:6} | {:6} | {:6} | {:5} | {:7} | ' \
+                     '{:14} | {:8} | {:4} | {:5} | {:9}'
             status_text.append(status.format('S2CellLoc', 'CloudLv', 'RainLv',
                                              'WindLv', 'SnowLv', 'FogLv',
                                              'WindDir', 'Gameplay',
@@ -275,7 +274,9 @@ def status_printer(threadStatus, account_failures, logmode, hash_key,
             db_weathers = Weather.get_weathers()
             if db_weathers is not None:
                 for weather in db_weathers:
-                    weather['location'] = "{:.6f}, {:.6f}".format(weather['latitude'], weather['longitude'])
+                    weather['location'] = "{:.6f}, {:.6f}".format(
+                        weather['latitude'], weather['longitude']
+                    )
                     serverity = 0
                     warn = 0
                     if weather['severity']:
@@ -289,10 +290,15 @@ def status_printer(threadStatus, account_failures, logmode, hash_key,
                         weather['snow_level'],
                         weather['fog_level'],
                         degrees_to_cardinal(weather['wind_direction']),
-                        GameplayWeather.WeatherCondition.Name(weather['gameplay_weather']),
+                        pgoapi.protos.pogoprotos.map.weather
+                            .gameplay_weather_pb2.GameplayWeather
+                            .WeatherCondition
+                            .Name(weather['gameplay_weather']),
                         WeatherAlert.Severity.Name(serverity),
                         warn,
-                        GetMapObjectsResponse.TimeOfDay.Name(weather['world_time']),
+                        pgoapi.protos.pogoprotos.networking.responses
+                            .get_map_objects_response_pb2.GetMapObjectsResponse.TimeOfDay
+                            .Name(weather['world_time']),
                         str(weather['last_updated'])))
 
         # Print the status_text for the current screen.
@@ -593,7 +599,9 @@ def search_overseer_thread(args, new_location_queue, control_flags, heartb,
                     log.error(
                         'Schedule creation had an Exception: {}.'.format(
                             repr(e)))
-                    traceback.print_exc(file=sys.stdout)
+                    traceback.print_exc(
+                        file=pgoapi.protos.pogoprotos.networking.responses
+                            .get_map_objects_response_pb2.sys.stdout)
                     time.sleep(10)
             else:
                 threadStatus['Overseer']['message'] = scheduler_array[
@@ -607,7 +615,9 @@ def search_overseer_thread(args, new_location_queue, control_flags, heartb,
             log.error(
                 'Update total stats had an Exception: {}.'.format(
                     repr(e)))
-            traceback.print_exc(file=sys.stdout)
+            traceback.print_exc(
+                file=pgoapi.protos.pogoprotos.networking.responses
+                    .get_map_objects_response_pb2.sys.stdout)
             time.sleep(10)
         threadStatus['Overseer']['message'] += '\n' + get_stats_message(
             threadStatus, search_items_queue_array, db_updates_queue, wh_queue,

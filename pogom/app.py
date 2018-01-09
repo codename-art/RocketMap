@@ -15,7 +15,8 @@ from flask import url_for
 from flask.json import JSONEncoder
 from flask_compress import Compress
 
-from pogom.weather import get_weather_cells, get_s2_coverage, get_weather_alerts
+from pogom.weather import get_weather_cells, get_s2_coverage, \
+    get_weather_alerts
 from .blacklist import fingerprints, get_ip_blacklist
 from .models import (Pokemon, Gym, Pokestop, ScannedLocation,
                      MainWorker, WorkerStatus, Token, HashKeys,
@@ -25,9 +26,10 @@ from .utils import (get_args, get_pokemon_name, get_pokemon_types,
 from .transform import transform_from_wgs_to_gcj
 from .blacklist import fingerprints, get_ip_blacklist
 
-from pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2 import *
-from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import *
-from pgoapi.protos.pogoprotos.networking.responses.get_map_objects_response_pb2 import *
+import pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2
+import pgoapi.protos.pogoprotos.networking.responses \
+    .get_map_objects_response_pb2
+from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import WeatherAlert
 
 log = logging.getLogger(__name__)
 compress = Compress()
@@ -107,12 +109,15 @@ class Pogom(Flask):
 
         max_weather_per_page = 25
         max_page = int(math.ceil(len(db_weathers)/float(max_weather_per_page)))
-        lines = "<style> th,td { padding-left: 10px; padding-right: 10px; border: 1px solid #ddd; }" \
-                " table { border-collapse: collapse } td { text-align:center }</style>"
+        lines = "<style> th,td { padding-left: 10px; padding-right: 10px;" \
+                " border: 1px solid #ddd; }" \
+                " table { border-collapse: collapse }" \
+                " td { text-align:center }</style>"
         lines += "<meta http-equiv='Refresh' content='60'>"
         lines += "Pokemon Go Weather Status"
         lines += "<br><br>"
-        headers = ['#', 'S2CellLoc', 'CloudLv', 'RainLv', 'WindLv', 'SnowLv', 'FogLv', 'WindDir', 'Gameplay',
+        headers = ['#', 'S2CellLoc', 'CloudLv', 'RainLv', 'WindLv', 'SnowLv',
+                   'FogLv', 'WindDir', 'Gameplay',
                    'Severity', 'Warn', 'LastUpdated', 'Time']
 
         lines += "<table><tr>"
@@ -120,11 +125,13 @@ class Pogom(Flask):
             lines += "<th>{}</th>".format(h)
         lines += "</tr>"
 
-        if page * max_weather_per_page > len(db_weathers):  # Page number is too great, set to last page
+        if page * max_weather_per_page > len(db_weathers):
+            # Page number is too great, set to last page
             page = max_page
         if page < 1:
             page = 1
-        for i in range((page-1)*max_weather_per_page, page*max_weather_per_page):
+        for i in range((page - 1) * max_weather_per_page,
+                       page * max_weather_per_page):
             if i >= len(db_weathers):
                 break
             lines += "<tr>"
@@ -138,21 +145,29 @@ class Pogom(Flask):
             lines += td(s['snow_level'])
             lines += td(s['fog_level'])
             lines += td(degrees_to_cardinal(s['wind_direction']))
-            lines += td(GameplayWeather.WeatherCondition.Name(s['gameplay_weather']))
+            lines += td(
+                pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2
+                    .GameplayWeather.WeatherCondition
+                    .Name(s['gameplay_weather'])
+            )
             if s['severity'] is None:
                 s['severity'] = 0
             lines += td(WeatherAlert.Severity.Name(s['severity']))
             lines += td(s['warn_weather'])
             lines += td(s['last_updated'])
-            lines += td(GetMapObjectsResponse.TimeOfDay.Name(s['world_time']))
+            lines += td(pgoapi.protos.pogoprotos.networking.responses
+                        .GetMapObjectsResponse.TimeOfDay.Name(s['world_time']))
             lines += "</tr>"
         lines += "</table>"
 
         lines += "<br>"
-        if len(db_weathers) > max_weather_per_page:  # Use pages if we have more than max_scouts_per_page
+        if len(db_weathers) > max_weather_per_page:
+            # Use pages if we have more than max_scouts_per_page
             lines += "Page: "
             if max_page > 1 and page > 1:
-                lines += "<a href={}>&lt;</a> | ".format(url_for('weather', page=page-1))
+                lines += "<a href={}>&lt;</a> | ".format(
+                    url_for('weather', page=page - 1)
+                )
             for p in range(1, max_page+1):
                 if p == page:
                     lines += str(p)
@@ -162,7 +177,9 @@ class Pogom(Flask):
                 if p < max_page:
                     lines += " | "
             if max_page > 1 and page < max_page:
-                lines += " | <a href={}>&gt;</a>".format(url_for('weather', page=page+1))
+                lines += " | <a href={}>&gt;</a>".format(
+                    url_for('weather', page=page + 1)
+                )
 
         return lines
 
