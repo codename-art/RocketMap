@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import requests
 import threading
-
-from queue import Empty
-from cachetools import LFUCache
 from timeit import default_timer
+
+import requests
+from cachetools import LFUCache
+from queue import Empty
 
 from .utils import get_async_requests_session
 
@@ -222,9 +222,7 @@ def __get_key_fields(whtype):
             'spawn', 'start', 'end', 'pokemon_id', 'latitude', 'longitude'
         ],
         'weather': [
-            's2_cell_id', 'latitude', 'longitude', 'cloud_level', 'rain_level', 'wind_level',
-            'snow_level', 'fog_level', 'wind_direction', 'gameplay_weather', 'severity', 'warn_weather',
-            'world_time'
+            's2_cell_id', 'latitude', 'longitude', 'gameplay_weather', 'severity', 'world_time'
         ],
     }
 
