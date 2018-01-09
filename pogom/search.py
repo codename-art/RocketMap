@@ -294,7 +294,8 @@ def status_printer(threadStatus, account_failures, logmode, hash_key,
                             .Name(weather['gameplay_weather']),
                         pgoapi.protos.pogoprotos.map.weather
                             .weather_alert_pb2.WeatherAlert.Severity.Name(
-                            serverity),
+                            serverity
+                        ),
                         warn,
                         pgoapi.protos.pogoprotos.networking.responses
                             .get_map_objects_response_pb2.GetMapObjectsResponse

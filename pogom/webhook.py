@@ -222,7 +222,8 @@ def __get_key_fields(whtype):
             'spawn', 'start', 'end', 'pokemon_id', 'latitude', 'longitude'
         ],
         'weather': [
-            's2_cell_id', 'latitude', 'longitude', 'gameplay_weather', 'severity', 'world_time'
+            's2_cell_id', 'latitude', 'longitude', 'gameplay_weather',
+            'severity', 'world_time'
         ],
     }
 
