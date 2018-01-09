@@ -31,12 +31,10 @@ from distutils.version import StrictVersion
 from sets import Set
 from threading import Thread, Lock
 
-import \
-    pgoapi.protos.pogoprotos.networking.responses.get_map_objects_response_pb2
+import pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2
 import requests
 from cachetools import TTLCache
 from pgoapi.hash_server import HashServer
-from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import WeatherAlert
 from queue import Queue, Empty
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
@@ -294,11 +292,13 @@ def status_printer(threadStatus, account_failures, logmode, hash_key,
                             .gameplay_weather_pb2.GameplayWeather
                             .WeatherCondition
                             .Name(weather['gameplay_weather']),
-                        WeatherAlert.Severity.Name(serverity),
+                        pgoapi.protos.pogoprotos.map.weather
+                            .weather_alert_pb2.WeatherAlert.Severity.Name(
+                            serverity),
                         warn,
                         pgoapi.protos.pogoprotos.networking.responses
-                            .get_map_objects_response_pb2.GetMapObjectsResponse.TimeOfDay
-                            .Name(weather['world_time']),
+                            .get_map_objects_response_pb2.GetMapObjectsResponse
+                            .TimeOfDay.Name(weather['world_time']),
                         str(weather['last_updated'])))
 
         # Print the status_text for the current screen.

@@ -6,11 +6,12 @@ import gc
 import itertools
 import logging
 import math
+import sys
 import time
 from datetime import datetime, timedelta
 from timeit import default_timer
 
-import pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2
+import pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2
 import pgoapi.protos.pogoprotos.networking.responses \
     .get_map_objects_response_pb2
 import s2sphere
@@ -21,7 +22,6 @@ from peewee import (InsertQuery, Check, CompositeKey, ForeignKeyField,
                     BooleanField, DateTimeField, fn, DeleteQuery, FloatField,
                     TextField, BigIntegerField, PrimaryKeyField,
                     JOIN, OperationalError)
-from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import WeatherAlert
 from playhouse.flask_utils import FlaskDB
 from playhouse.migrate import migrate, MySQLMigrator
 from playhouse.pool import PooledMySQLDatabase
@@ -1861,7 +1861,7 @@ class Weather(BaseModel):
                 (Weather.latitude <= float(neLat) + lat_delta) &
                 (Weather.longitude <= float(neLng) + lng_delta) &
                 (Weather.severity.is_null(False))
-            ).adicts()
+            ).dicts()
         weathers = []
         for w in query:
             weathers.append(w)
@@ -2003,7 +2003,9 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
         for w in weather_alert:
             log.info('Weather Alerts Active: %s, Severity Level: %s',
                      w.warn_weather,
-                     WeatherAlert.Severity.Name(w.severity))
+                     pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2
+                     .WeatherAlert.Severity.Name(
+                         w.severity))
             severity = w.severity
             warn = w.warn_weather
 
