@@ -107,19 +107,20 @@ class Pogom(Flask):
 
         max_weather_per_page = 25
         max_page = int(math.ceil(len(db_weathers)/float(max_weather_per_page)))
-        lines = "<style> th,td { padding-left: 10px; padding-right: 10px; border: 1px solid #ddd; } table { border-collapse: collapse } td { text-align:center }</style>"
+        lines = "<style> th,td { padding-left: 10px; padding-right: 10px; border: 1px solid #ddd; }" \
+                " table { border-collapse: collapse } td { text-align:center }</style>"
         lines += "<meta http-equiv='Refresh' content='60'>"
         lines += "Pokemon Go Weather Status"
         lines += "<br><br>"
         headers = ['#', 'S2CellLoc', 'CloudLv', 'RainLv', 'WindLv', 'SnowLv', 'FogLv', 'WindDir', 'Gameplay',
-                                          'Severity', 'Warn', 'LastUpdated', 'Time']
+                   'Severity', 'Warn', 'LastUpdated', 'Time']
 
         lines += "<table><tr>"
         for h in headers:
             lines += "<th>{}</th>".format(h)
         lines += "</tr>"
 
-        if page * max_weather_per_page > len(db_weathers):    #Page number is too great, set to last page
+        if page * max_weather_per_page > len(db_weathers):  # Page number is too great, set to last page
             page = max_page
         if page < 1:
             page = 1
@@ -129,8 +130,6 @@ class Pogom(Flask):
             lines += "<tr>"
             s = db_weathers[i]
             cell = "{:.6f}, {:.6f}".format(s['latitude'], s['longitude'])
-            #warn = s.get_state('warn')
-            #warn_str = '' if warn is None else ('Yes' if warn else 'No')
             lines += td(i+1)
             lines += td(cell)
             lines += td(s['cloud_level'])
@@ -140,7 +139,7 @@ class Pogom(Flask):
             lines += td(s['fog_level'])
             lines += td(degrees_to_cardinal(s['wind_direction']))
             lines += td(GameplayWeather.WeatherCondition.Name(s['gameplay_weather']))
-            if s['severity'] == None:
+            if s['severity'] is None:
                 s['severity'] = 0
             lines += td(WeatherAlert.Severity.Name(s['severity']))
             lines += td(s['warn_weather'])
