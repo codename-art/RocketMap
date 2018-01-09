@@ -171,7 +171,7 @@ function getWeatherImageUrl(item, dark = true) {
 }
 
 /**
- * Creates path for alert icon based on severity
+ * Generates path for alert icon based on severity
  * @param item
  * @returns {*}
  */
@@ -186,22 +186,39 @@ function getalertImageUrl(item) {
 }
 
 /**
+ * Creates icon for current zoom level
+ * @param weatherImageUrl
+ * @returns icon with image and scaled size
+ */
+function createMarkerIcon(weatherImageUrl) {
+    var size = 64 * map.getZoom() / 18
+    console.log(size)
+    return {
+        url: weatherImageUrl,
+        origin: new google.maps.Point(0, 0),
+        anchor: new google.maps.Point(16, 16),
+        size: new google.maps.Size(size, size),
+        scaledSize: new google.maps.Size(size, size)
+    }
+}
+
+/**
  * Creates marker with image
  * @param item
  * @returns {google.maps.Marker}
  */
 function setupWeatherMarker(item) {
     var weatherImageUrl = getWeatherImageUrl(item)
-
-    var image = {
-        url: weatherImageUrl,
-        origin: new google.maps.Point(0, 0),
-        anchor: new google.maps.Point(32, 32)
-    }
-    return new google.maps.Marker({
+    var marker = new google.maps.Marker({
         position: item.center,
-        icon: image
+        icon: createMarkerIcon(weatherImageUrl)
     })
+
+    map.addListener('zoom_changed', function () {
+        marker.setIcon(createMarkerIcon(marker.icon.url))
+        marker.setMap(map)
+    })
+    return marker
 }
 
 
