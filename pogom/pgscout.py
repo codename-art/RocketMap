@@ -23,7 +23,7 @@ def pgscout_encounter(p):
     # Assemble PGScout request
     params = {
         'pokemon_id': p.pokemon_id,
-        'encounter_id': b64encode(p.encounter_id),
+        'encounter_id': b64encode(str(p.encounter_id)),
         'spawn_point_id': p.spawnpoint_id,
         'latitude': p.latitude,
         'longitude': p.longitude
