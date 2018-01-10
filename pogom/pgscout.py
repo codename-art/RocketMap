@@ -19,12 +19,16 @@ def scout_error(error_msg):
 
 def pgscout_encounter(p):
     args = get_args()
+    if isinstance(p.spawnpoint_id, basestring):
+        spawn_point_id = p.spawnpoint_id
+    else:
+        spawn_point_id = format(p.spawnpoint_id, 'x')
 
     # Assemble PGScout request
     params = {
         'pokemon_id': p.pokemon_id,
         'encounter_id': b64encode(str(p.encounter_id)),
-        'spawn_point_id': '',
+        'spawn_point_id': spawn_point_id,
         'latitude': p.latitude,
         'longitude': p.longitude
     }
