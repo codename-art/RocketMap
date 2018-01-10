@@ -4,7 +4,6 @@
 import calendar
 import logging
 import gc
-from base64 import b64decode
 
 from flask import Flask, abort, jsonify, render_template, request,\
     make_response, send_from_directory
@@ -99,7 +98,7 @@ class Pogom(Flask):
     def scout_pokemon(self):
         args = get_args()
         if args.pgscout_url:
-            encounterId = b64decode(request.args.get('encounter_id'))
+            encounterId = request.args.get('encounter_id')
             p = Pokemon.get(Pokemon.encounter_id == encounterId)
             pokemon_name = get_pokemon_name(p.pokemon_id)
             log.info(
