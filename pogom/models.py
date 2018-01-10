@@ -1760,7 +1760,7 @@ def perform_pgscout(p):
     # Prepare Pokemon object
     pkm = Pokemon()
     pkm.pokemon_id = pokemon_id
-    pkm.encounter_id = str(p.encounter_id)
+    pkm.encounter_id = p.encounter_id
     pkm.spawnpoint_id = p.spawn_point_id
     pkm.latitude = p.latitude
     pkm.longitude = p.longitude
