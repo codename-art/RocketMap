@@ -526,12 +526,12 @@ function getDateStr(t) {
 }
 
 function scout(encounterId) { // eslint-disable-line no-unused-vars
-    var infoEl = $('#scoutInfo' + atob(encounterId))
+    var infoEl = $('#scoutInfo' + encounterId)
     $.ajax({
         url: 'scout',
         type: 'GET',
         data: {
-            'encounter_id': encounterId
+            'encounter_id': btoa(encounterId)
         },
         dataType: 'json',
         cache: false,
@@ -590,7 +590,7 @@ function pokemonLabel(item) {
     var form = item['form']
     var cp = item['cp']
     var cpMultiplier = item['cp_multiplier']
-    var encounterIdLong = atob(encounterId)
+    var encounterIdLong = encounterId
 
     $.each(types, function (index, type) {
         typesDisplay += getTypeSpan(type)
