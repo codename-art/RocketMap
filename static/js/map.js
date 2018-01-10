@@ -531,7 +531,7 @@ function scout(encounterId) { // eslint-disable-line no-unused-vars
         url: 'scout',
         type: 'GET',
         data: {
-            'encounter_id': btoa(encounterId)
+            'encounter_id': encounterId
         },
         dataType: 'json',
         cache: false,
