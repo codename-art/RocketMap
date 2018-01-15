@@ -26,9 +26,9 @@ from .utils import (get_args, get_pokemon_name, get_pokemon_types,
 from .transform import transform_from_wgs_to_gcj
 from .blacklist import fingerprints, get_ip_blacklist
 
-import pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2
-import pgoapi.protos.pogoprotos.networking.responses \
-    .get_map_objects_response_pb2
+from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import WeatherAlert
+from pgoapi.protos.pogoprotos.networking.responses.get_map_objects_response_pb2 \
+    import GetMapObjectsResponse
 from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import WeatherAlert
 
 log = logging.getLogger(__name__)
@@ -155,8 +155,7 @@ class Pogom(Flask):
             lines += td(WeatherAlert.Severity.Name(s['severity']))
             lines += td(s['warn_weather'])
             lines += td(s['last_updated'])
-            lines += td(pgoapi.protos.pogoprotos.networking.responses
-                        .GetMapObjectsResponse.TimeOfDay.Name(s['world_time']))
+            lines += td(GetMapObjectsResponse.TimeOfDay.Name(s['world_time']))
             lines += "</tr>"
         lines += "</table>"
 
