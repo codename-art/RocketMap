@@ -27,9 +27,10 @@ from .transform import transform_from_wgs_to_gcj
 from .blacklist import fingerprints, get_ip_blacklist
 
 from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import WeatherAlert
-from pgoapi.protos.pogoprotos.networking.responses.get_map_objects_response_pb2 \
-    import GetMapObjectsResponse
-from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import WeatherAlert
+from pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2 \
+    import GameplayWeather
+from pgoapi.protos.pogoprotos.networking.responses \
+    .get_map_objects_response_pb2 import GetMapObjectsResponse
 
 log = logging.getLogger(__name__)
 compress = Compress()
@@ -146,9 +147,7 @@ class Pogom(Flask):
             lines += td(s['fog_level'])
             lines += td(degrees_to_cardinal(s['wind_direction']))
             lines += td(
-                pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2
-                .GameplayWeather.WeatherCondition
-                .Name(s['gameplay_weather'])
+                GameplayWeather.WeatherCondition.Name(s['gameplay_weather'])
             )
             if s['severity'] is None:
                 s['severity'] = 0
