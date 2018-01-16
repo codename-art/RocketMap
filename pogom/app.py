@@ -143,7 +143,7 @@ class Pogom(Flask):
         weathers = map(
             prepare_cell,
             db_weathers[
-            (page - 1) * max_weather_per_page:page * max_weather_per_page
+                (page - 1) * max_weather_per_page:page * max_weather_per_page
             ]
         )
 
