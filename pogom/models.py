@@ -1151,8 +1151,9 @@ class SpawnPoint(LatLongModel):
     class Meta:
         indexes = ((('latitude', 'longitude'), False),)
         constraints = [Check('earliest_unseen >= 0'),
-                       Check('earliest_unseen < 3600'),
-                       Check('latest_seen >= 0'), Check('latest_seen < 3600')]
+                       Check('earliest_unseen <= 3600'),
+                       Check('latest_seen >= 0'),
+                       Check('latest_seen <= 3600')]
 
     # Returns the spawnpoint dict from ID, or a new dict if not found.
     @staticmethod
@@ -1240,7 +1241,11 @@ class SpawnPoint(LatLongModel):
     def tth_found(sp):
         # Fully indentified if no '?' in links and
         # latest_seen == earliest_unseen.
-        return sp['latest_seen'] == sp['earliest_unseen']
+        # Warning: python uses modulo as the least residue, not as
+        # remainder, so we don't apply it to the result.
+        latest_seen = (sp['latest_seen'] % 3600)
+        earliest_unseen = (sp['earliest_unseen'] % 3600)
+        return latest_seen - earliest_unseen == 0
 
     # Return [start, end] in seconds after the hour for the spawn, despawn
     # time of a spawnpoint.
@@ -1501,9 +1506,13 @@ class SpawnpointDetectionData(BaseModel):
         sp['links'] = sp['kind'].replace('s', '?')
 
         if sp['kind'] != 'ssss':
-
+            # Cover all bases, make sure we're using values < 3600.
+            # Warning: python uses modulo as the least residue, not as
+            # remainder, so we don't apply it to the result.
+            residue_unseen = sp['earliest_unseen'] % 3600
+            residue_seen = sp['latest_seen'] % 3600
             if (not sp['earliest_unseen'] or
-                    sp['earliest_unseen'] != sp['latest_seen'] or
+                    residue_unseen != residue_seen or
                     not tth_found):
 
                 # New latest_seen will be just before max_gap.
@@ -1518,7 +1527,14 @@ class SpawnpointDetectionData(BaseModel):
         # Only ssss spawns from here below.
 
         sp['links'] = '+++-'
-        if sp['earliest_unseen'] == sp['latest_seen']:
+
+        # Cover all bases, make sure we're using values < 3600.
+        # Warning: python uses modulo as the least residue, not as
+        # remainder, so we don't apply it to the result.
+        residue_unseen = sp['earliest_unseen'] % 3600
+        residue_seen = sp['latest_seen'] % 3600
+
+        if residue_unseen == residue_seen:
             return
 
         # Make a sight_list of dicts:
@@ -1600,7 +1616,13 @@ class SpawnpointDetectionData(BaseModel):
     def unseen(sp, now_secs):
 
         # Return if we already have a tth.
-        if sp['latest_seen'] == sp['earliest_unseen']:
+        # Cover all bases, make sure we're using values < 3600.
+        # Warning: python uses modulo as the least residue, not as
+        # remainder, so we don't apply it to the result.
+        residue_unseen = sp['earliest_unseen'] % 3600
+        residue_seen = sp['latest_seen'] % 3600
+
+        if residue_seen == residue_unseen:
             return False
 
         # If now_secs is later than the latest seen return.
@@ -1835,7 +1857,8 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
     if not wild_pokemon and not nearby_pokemon:
         # ...and there are no gyms/pokestops then it's unusable/bad.
         if not forts:
-            log.warning('Bad scan. Parsing found absolutely nothing.')
+            log.warning('Bad scan. Parsing found absolutely nothing'
+                        + ' using account %s.', account['username'])
             log.info('Common causes: captchas or IP bans.')
         elif not args.no_pokemon:
             # When gym scanning we'll go over the speed limit
@@ -1890,7 +1913,14 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
                 d_t_secs = date_secs(datetime.utcfromtimestamp(
                     (p.last_modified_timestamp_ms +
                      p.time_till_hidden_ms) / 1000.0))
-                if (sp['latest_seen'] != sp['earliest_unseen'] or
+
+                # Cover all bases, make sure we're using values < 3600.
+                # Warning: python uses modulo as the least residue, not as
+                # remainder, so we don't apply it to the result.
+                residue_unseen = sp['earliest_unseen'] % 3600
+                residue_seen = sp['latest_seen'] % 3600
+
+                if (residue_seen != residue_unseen or
                         not sp['last_scanned']):
                     log.info('TTH found for spawnpoint %s.', sp['id'])
                     sighting['tth_secs'] = d_t_secs
@@ -2198,6 +2228,7 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
                             wh_raid = raids[f.id].copy()
                             wh_raid.update({
                                 'gym_id': b64_gym_id,
+                                'team_id': f.owned_by_team,
                                 'spawn': raid_info.raid_spawn_ms / 1000,
                                 'start': raid_info.raid_battle_ms / 1000,
                                 'end': raid_info.raid_end_ms / 1000,
@@ -2260,9 +2291,13 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
         if (not SpawnPoint.tth_found(sp) and scan_location['done'] and
                 (now_secs - sp['latest_seen'] -
                  args.spawn_delay) % 3600 < 60):
+            # Warning: python uses modulo as the least residue, not as
+            # remainder, so we don't apply it to the result. Just a
+            # safety measure until we can guarantee there's never a negative
+            # result.
             log.warning('Spawnpoint %s was unable to locate a TTH, with '
                         'only %ss after Pokemon last seen.', sp['id'],
-                        (now_secs - sp['latest_seen']) % 3600)
+                        (now_secs % 3600 - sp['latest_seen'] % 3600))
             log.info('Restarting current 15 minute search for TTH.')
             if sp['id'] not in sp_id_list:
                 SpawnpointDetectionData.classify(sp, scan_location, now_secs)
@@ -3109,6 +3144,22 @@ def database_migrate(db, old_ver):
         db.execute_sql('DROP TABLE `spawnpoint_old`;')
         db.execute_sql('DROP TABLE `gymmember_old`;')
         db.execute_sql('DROP TABLE `gympokemon_old`;')
+
+    if old_ver < 22:
+        # Drop and add CONSTRAINT_2 with the <= fix.
+        db.execute_sql('ALTER TABLE `spawnpoint` '
+                       'DROP CONSTRAINT CONSTRAINT_2;')
+        db.execute_sql('ALTER TABLE `spawnpoint` '
+                       'ADD CONSTRAINT CONSTRAINT_2 ' +
+                       'CHECK (`earliest_unseen` <= 3600);')
+
+        # Drop and add CONSTRAINT_4 with the <= fix.
+        db.execute_sql('ALTER TABLE `spawnpoint` '
+                       'DROP CONSTRAINT CONSTRAINT_4;')
+        db.execute_sql('ALTER TABLE `spawnpoint` '
+                       'ADD CONSTRAINT CONSTRAINT_4 CHECK ' +
+                       '(`latest_seen` <= 3600);')
+
     # Always log that we're done.
     log.info('Schema upgrade complete.')
     return True

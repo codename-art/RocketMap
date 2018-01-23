@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import configargparse
 import os
 import json
 import logging
@@ -14,6 +13,7 @@ import hashlib
 import psutil
 import subprocess
 import requests
+import configargparse
 
 from s2sphere import CellId, LatLng
 from geopy.geocoders import GoogleV3
@@ -338,11 +338,12 @@ def get_args():
                         type=int, default=20)
     parser.add_argument('-kph', '--kph',
                         help=('Set a maximum speed in km/hour for scanner ' +
-                              'movement.'),
+                              'movement. 0 to disable. Default: 35.'),
                         type=int, default=35)
     parser.add_argument('-hkph', '--hlvl-kph',
                         help=('Set a maximum speed in km/hour for scanner ' +
-                              'movement, for high-level (L30) accounts.'),
+                              'movement, for high-level (L30) accounts. ' +
+                              '0 to disable. Default: 25.'),
                         type=int, default=25)
     parser.add_argument('-ldur', '--lure-duration',
                         help=('Change duration for lures set on pokestops. ' +
@@ -918,6 +919,38 @@ def i8ln(word):
         return word
 
 
+# Thread function for periodical enc list updating.
+def dynamic_loading_refresher(file_list):
+    # We're on a 60-second timer.
+    refresh_time_sec = 60
+
+    while True:
+        # Wait (x-1) seconds before refresh, min. 1s.
+        time.sleep(max(1, refresh_time_sec - 1))
+
+        for arg_type, filename in file_list.items():
+            try:
+                # IV/CP scanning.
+                if filename:
+                    # Only refresh if the file has changed.
+                    current_time_sec = time.time()
+                    file_modified_time_sec = os.path.getmtime(filename)
+                    time_diff_sec = current_time_sec - file_modified_time_sec
+
+                    # File has changed in the last refresh_time_sec seconds.
+                    if time_diff_sec < refresh_time_sec:
+                        args = get_args()
+                        with open(filename) as f:
+                            new_list = frozenset([int(l.strip()) for l in f])
+                            setattr(args, arg_type, new_list)
+                            log.info('New %s is: %s.', arg_type, new_list)
+                    else:
+                        log.debug('No change found in %s.', filename)
+            except Exception as e:
+                log.exception('Exception occurred while' +
+                              ' updating %s: %s.', arg_type, e)
+
+
 def get_pokemon_data(pokemon_id):
     if not hasattr(get_pokemon_data, 'pokemon'):
         args = get_args()
@@ -981,11 +1014,7 @@ def dottedQuadToNum(ip):
 
 # Generate random device info.
 # Original by Noctem.
-IPHONES = {'iPhone5,1': 'N41AP',
-           'iPhone5,2': 'N42AP',
-           'iPhone5,3': 'N48AP',
-           'iPhone5,4': 'N49AP',
-           'iPhone6,1': 'N51AP',
+IPHONES = {'iPhone6,1': 'N51AP',
            'iPhone6,2': 'N53AP',
            'iPhone7,1': 'N56AP',
            'iPhone7,2': 'N61AP',
@@ -1037,9 +1066,6 @@ def generate_device_info(identifier):
         # iPhone SE started on 9.3.
         ios_pool = ('9.3', '9.3.1', '9.3.2', '9.3.3', '9.3.4', '9.3.5') \
                    + ios10 + ios11
-    elif device_pick in ('iPhone5,1', 'iPhone5,2', 'iPhone5,3', 'iPhone5,4'):
-        # iPhone 5/5c doesn't support iOS 11.
-        ios_pool = ios9 + ios10
     else:
         ios_pool = ios9 + ios10 + ios11
 
