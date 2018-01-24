@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import sys
-import configargparse
 import os
 import json
 import logging
@@ -14,6 +13,7 @@ import hashlib
 import psutil
 import subprocess
 import requests
+import configargparse
 
 from s2sphere import CellId, LatLng
 from geopy.geocoders import GoogleV3
@@ -288,8 +288,6 @@ def get_args():
                         action='store_true', default=False)
     parser.add_argument('-C', '--cors', help='Enable CORS on web server.',
                         action='store_true', default=False)
-    parser.add_argument('-D', '--db', help='Database filename for SQLite.',
-                        default='pogom.db')
     parser.add_argument('-cd', '--clear-db',
                         help=('Deletes the existing database before ' +
                               'starting the Webserver.'),
@@ -317,7 +315,11 @@ def get_args():
                         help=('Use spawnpoint scanning (instead of hex ' +
                               'grid). Scans in a circle based on step_limit ' +
                               'when on DB.'),
-                        nargs='?', const='nofile', default=False)
+                        action='store_true', default=False)
+    parser.add_argument('-ssct', '--ss-cluster-time',
+                        help=('Time threshold in seconds for spawn point ' +
+                              'clustering (0 to disable).'),
+                        type=int, default=0)
     parser.add_argument('-speed', '--speed-scan',
                         help=('Use speed scanning to identify spawn points ' +
                               'and then scan closest spawns.'),
@@ -330,20 +332,17 @@ def get_args():
                         type=int, default=20)
     parser.add_argument('-kph', '--kph',
                         help=('Set a maximum speed in km/hour for scanner ' +
-                              'movement.'),
+                              'movement. 0 to disable. Default: 35.'),
                         type=int, default=35)
     parser.add_argument('-hkph', '--hlvl-kph',
                         help=('Set a maximum speed in km/hour for scanner ' +
-                              'movement, for high-level (L30) accounts.'),
+                              'movement, for high-level (L30) accounts. ' +
+                              '0 to disable. Default: 25.'),
                         type=int, default=25)
     parser.add_argument('-ldur', '--lure-duration',
                         help=('Change duration for lures set on pokestops. ' +
                               'This is useful for events that extend lure ' +
                               'duration.'), type=int, default=30)
-    parser.add_argument('--dump-spawnpoints',
-                        help=('Dump the spawnpoints from the db to json ' +
-                              '(only for use with -ss).'),
-                        action='store_true', default=False)
     parser.add_argument('-pd', '--purge-data',
                         help=('Clear Pokemon from database this many hours ' +
                               'after they disappear (0 to disable).'),
@@ -384,22 +383,32 @@ def get_args():
                         help=('Enable proxy rotation with account changing ' +
                               'for search threads (none/round/random).'),
                         type=str, default='round')
-    parser.add_argument('--db-type',
-                        help='Type of database to be used (default: sqlite).',
-                        default='sqlite')
-    parser.add_argument('--db-name', help='Name of the database to be used.')
-    parser.add_argument('--db-user', help='Username for the database.')
-    parser.add_argument('--db-pass', help='Password for the database.')
-    parser.add_argument('--db-host', help='IP or hostname for the database.')
-    parser.add_argument(
+    group = parser.add_argument_group('Database')
+    group.add_argument(
+        '--db-name', help='Name of the database to be used.', required=True)
+    group.add_argument(
+        '--db-user', help='Username for the database.', required=True)
+    group.add_argument(
+        '--db-pass', help='Password for the database.', required=True)
+    group.add_argument(
+        '--db-host',
+        help='IP or hostname for the database.',
+        default='127.0.0.1')
+    group.add_argument(
         '--db-port', help='Port for the database.', type=int, default=3306)
-    parser.add_argument('--db-threads',
-                        help=('Number of db threads; increase if the db ' +
-                              'queue falls behind.'),
-                        type=int, default=1)
-    parser.add_argument('-wh', '--webhook',
-                        help='Define URL(s) to POST webhook information to.',
-                        default=None, dest='webhooks', action='append')
+    group.add_argument(
+        '--db-threads',
+        help=('Number of db threads; increase if the db ' +
+              'queue falls behind.'),
+        type=int,
+        default=1)
+    parser.add_argument(
+        '-wh',
+        '--webhook',
+        help='Define URL(s) to POST webhook information to.',
+        default=None,
+        dest='webhooks',
+        action='append')
     parser.add_argument('-gi', '--gym-info',
                         help=('Get all details about gyms (causes an ' +
                               'additional API hit for every gym).'),
@@ -426,8 +435,13 @@ def get_args():
                         help=('Number of times to retry sending webhook ' +
                               'data on failure.'),
                         type=int, default=3)
-    parser.add_argument('-wht', '--wh-timeout',
-                        help='Timeout (in seconds) for webhook requests.',
+    parser.add_argument('-whct', '--wh-connect-timeout',
+                        help=('Connect timeout (in seconds) for webhook' +
+                              ' requests.'),
+                        type=float, default=1.0)
+    parser.add_argument('-whrt', '--wh-read-timeout',
+                        help=('Read timeout (in seconds) for webhook' +
+                              'requests.'),
                         type=float, default=1.0)
     parser.add_argument('-whbf', '--wh-backoff-factor',
                         help=('Factor (in seconds) by which the delay ' +
@@ -468,9 +482,6 @@ def get_args():
                         help='Interval to check API version in seconds ' +
                         '(Default: in [60, 300]).',
                         default=random.randint(60, 300))
-    parser.add_argument('-el', '--encrypt-lib',
-                        help=('Path to encrypt lib to be used instead of ' +
-                              'the shipped ones.'))
     parser.add_argument('-odt', '--on-demand_timeout',
                         help=('Pause searching while web UI is inactive ' +
                               'for this timeout (in seconds).'),
@@ -820,7 +831,9 @@ def clock_between(start, test, end):
 
 # Return the s2sphere cellid token from a location.
 def cellid(loc):
-    return CellId.from_lat_lng(LatLng.from_degrees(loc[0], loc[1])).to_token()
+    return int(
+        CellId.from_lat_lng(LatLng.from_degrees(loc[0], loc[1])).to_token(),
+        16)
 
 
 # Return approximate distance in meters.
@@ -856,6 +869,38 @@ def i8ln(word):
         return i8ln.dictionary[word]
     else:
         return word
+
+
+# Thread function for periodical enc list updating.
+def dynamic_loading_refresher(file_list):
+    # We're on a 60-second timer.
+    refresh_time_sec = 60
+
+    while True:
+        # Wait (x-1) seconds before refresh, min. 1s.
+        time.sleep(max(1, refresh_time_sec - 1))
+
+        for arg_type, filename in file_list.items():
+            try:
+                # IV/CP scanning.
+                if filename:
+                    # Only refresh if the file has changed.
+                    current_time_sec = time.time()
+                    file_modified_time_sec = os.path.getmtime(filename)
+                    time_diff_sec = current_time_sec - file_modified_time_sec
+
+                    # File has changed in the last refresh_time_sec seconds.
+                    if time_diff_sec < refresh_time_sec:
+                        args = get_args()
+                        with open(filename) as f:
+                            new_list = frozenset([int(l.strip()) for l in f])
+                            setattr(args, arg_type, new_list)
+                            log.info('New %s is: %s.', arg_type, new_list)
+                    else:
+                        log.debug('No change found in %s.', filename)
+            except Exception as e:
+                log.exception('Exception occurred while' +
+                              ' updating %s: %s.', arg_type, e)
 
 
 def get_pokemon_data(pokemon_id):
@@ -921,11 +966,7 @@ def dottedQuadToNum(ip):
 
 # Generate random device info.
 # Original by Noctem.
-IPHONES = {'iPhone5,1': 'N41AP',
-           'iPhone5,2': 'N42AP',
-           'iPhone5,3': 'N48AP',
-           'iPhone5,4': 'N49AP',
-           'iPhone6,1': 'N51AP',
+IPHONES = {'iPhone6,1': 'N51AP',
            'iPhone6,2': 'N53AP',
            'iPhone7,1': 'N56AP',
            'iPhone7,2': 'N61AP',
@@ -977,9 +1018,6 @@ def generate_device_info(identifier):
         # iPhone SE started on 9.3.
         ios_pool = ('9.3', '9.3.1', '9.3.2', '9.3.3', '9.3.4', '9.3.5') \
                    + ios10 + ios11
-    elif device_pick in ('iPhone5,1', 'iPhone5,2', 'iPhone5,3', 'iPhone5,4'):
-        # iPhone 5/5c doesn't support iOS 11.
-        ios_pool = ios9 + ios10
     else:
         ios_pool = ios9 + ios10 + ios11
 

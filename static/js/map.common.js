@@ -866,6 +866,10 @@ var StoreOptions = {
         default: '',
         type: StoreTypes.Number
     },
+    'excludedRarity': {
+        default: 0, // 0: none, 1: <=Common, 2: <=Uncommon, 3: <=Rare, 4: <=Very Rare, 5: <=Ultra Rare
+        type: StoreTypes.Number
+    },
     'showRaids': {
         default: false,
         type: StoreTypes.Boolean
@@ -911,6 +915,10 @@ var StoreOptions = {
         type: StoreTypes.Number
     },
     'showPokemon': {
+        default: true,
+        type: StoreTypes.Boolean
+    },
+    'showPokemonStats': {
         default: true,
         type: StoreTypes.Boolean
     },
@@ -1027,6 +1035,22 @@ var StoreOptions = {
         type: StoreTypes.String
     },
     'isBounceDisabled': {
+        default: false,
+        type: StoreTypes.Boolean
+    },
+    'showLocationMarker': {
+        default: true,
+        type: StoreTypes.Boolean
+    },
+    'isLocationMarkerMovable': {
+        default: false,
+        type: StoreTypes.Boolean
+    },
+    'showSearchMarker': {
+        default: true,
+        type: StoreTypes.Boolean
+    },
+    'isSearchMarkerMovable': {
         default: false,
         type: StoreTypes.Boolean
     }
@@ -1154,6 +1178,21 @@ function updatePokemonMarker(item, map, scaleByRarity = true, isNotifyPkmn = fal
     const marker = item.marker
 
     marker.setIcon(icon)
+}
+
+function updatePokemonLabel(item) {
+    // Only update label when Pokémon has been encountered.
+    if (item['cp'] !== null && item['cpMultiplier'] !== null) {
+        item.marker.infoWindow.setContent(pokemonLabel(item))
+    }
+}
+
+function updatePokemonLabels(pokemonList) {
+    $.each(pokemonList, function (key, value) {
+        var item = pokemonList[key]
+
+        updatePokemonLabel(item)
+    })
 }
 
 function isTouchDevice() {
