@@ -1,41 +1,46 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import calendar
-import gc
-import itertools
 import logging
-import math
+import itertools
+import calendar
 import sys
+import gc
 import time
-from datetime import datetime, timedelta
-from timeit import default_timer
-
-import pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2
-import pgoapi.protos.pogoprotos.networking.responses \
-    .get_map_objects_response_pb2
+import math
 import s2sphere
-from cachetools import TTLCache
-from cachetools import cached
+
 from peewee import (InsertQuery, Check, CompositeKey, ForeignKeyField,
                     SmallIntegerField, IntegerField, CharField, DoubleField,
                     BooleanField, DateTimeField, fn, DeleteQuery, FloatField,
                     TextField, BigIntegerField, PrimaryKeyField,
                     JOIN, OperationalError)
 from playhouse.flask_utils import FlaskDB
-from playhouse.migrate import migrate, MySQLMigrator
 from playhouse.pool import PooledMySQLDatabase
 from playhouse.shortcuts import RetryOperationalError, case
+from playhouse.migrate import migrate, MySQLMigrator
+from datetime import datetime, timedelta
+from cachetools import TTLCache
+from cachetools import cached
+from timeit import default_timer
 
-from .account import check_login, setup_api, pokestop_spinnable, spin_pokestop
-from .apiRequests import encounter
-from .customLog import printPokemon
-from .proxy import get_new_proxy
-from .transform import transform_from_wgs_to_gcj, get_new_coords
 from .utils import (get_pokemon_name, get_pokemon_types,
                     get_args, cellid, in_radius, date_secs, clock_between,
                     get_move_name, get_move_damage, get_move_energy,
                     get_move_type, calc_pokemon_level)
+from .transform import transform_from_wgs_to_gcj, get_new_coords
+from .customLog import printPokemon
+
+from .account import check_login, setup_api, pokestop_spinnable, spin_pokestop
+from .proxy import get_new_proxy
+from .apiRequests import encounter
+
+
+from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import WeatherAlert
+from pgoapi.protos.pogoprotos.networking.responses \
+    .get_map_objects_response_pb2 import GetMapObjectsResponse
+from pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2 \
+    import GameplayWeather
 
 log = logging.getLogger(__name__)
 
@@ -1918,9 +1923,9 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
         for w in weather_alert:
             log.info('Weather Alerts Active: %s, Severity Level: %s',
                      w.warn_weather,
-                     pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2
-                     .WeatherAlert.Severity.Name(
-                         w.severity))
+                     WeatherAlert.Severity.Name(
+                         w.severity
+                     ))
             severity = w.severity
             warn = w.warn_weather
 
@@ -1952,11 +1957,8 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
                  display_weather.wind_direction)
 
         log.info('GamePlay Conditions: %s - %s Bonus.',
-                 pgoapi.protos.pogoprotos.networking.responses
-                 .get_map_objects_response_pb2.GetMapObjectsResponse
-                 .TimeOfDay.Name(worldtime),
-                 pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2
-                 .GameplayWeather.WeatherCondition.Name(gameplayweather))
+                 GetMapObjectsResponse.TimeOfDay.Name(worldtime),
+                 GameplayWeather.WeatherCondition.Name(gameplayweather))
 
         if 'weather' in args.wh_types:
             wh_weather = weather[s2_cell_id].copy()
