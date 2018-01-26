@@ -3007,7 +3007,7 @@ def database_migrate(db, old_ver):
             migrator.add_column('gym', 'total_cp',
                                 SmallIntegerField(null=False, default=0)))
 
-    if old_ver < 21:
+    if old_ver < 22:
         # First rename all tables being modified.
         db.execute_sql('RENAME TABLE `pokemon` TO `pokemon_old`;')
         db.execute_sql(
@@ -3079,7 +3079,7 @@ def database_migrate(db, old_ver):
         db.execute_sql('DROP TABLE `gymmember_old`;')
         db.execute_sql('DROP TABLE `gympokemon_old`;')
 
-    if old_ver < 22:
+    if old_ver < 23:
         # Drop and add CONSTRAINT_2 with the <= fix.
         db.execute_sql('ALTER TABLE `spawnpoint` '
                        'DROP CONSTRAINT CONSTRAINT_2;')
