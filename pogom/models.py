@@ -1941,8 +1941,6 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
     display_weather = {}
     gameplay_weather = {}
     weather = {}
-    if status['weather_last_updated'] is None:
-        status['weather_last_updated'] = {}
 
     # Consolidate the individual lists in each cell into two lists of Pokemon
     # and a list of forts.
@@ -1979,19 +1977,24 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
 
     lat = 0
     lng = 0
+
     # 0.85.1 Map Weather
+    if 'weather_last_updated' not in status:
+        status['weather_last_updated'] = {}
     for i, cell in enumerate(cellweathers):
         # Parse Map Weather Information
         s2_cell_id = cell.s2_cell_id
 
-        now = datetime.datetime.now()
-        weather_last_updated = \
-            status['weather_last_updated'].get(s2_cell_id, now)
+        now = datetime.now()
+        weather_last_updated = status['weather_last_updated'].get(
+                s2_cell_id, datetime.utcfromtimestamp(1)
+            )
 
         if weather_last_updated.day == now.day and\
                 weather_last_updated.hour == now.hour:
             break  # already updated this cell in this hour
 
+        status['weather_last_updated'][s2_cell_id] = now
         display_weather = cell.display_weather
         gameplay_weather = cell.gameplay_weather
         weather_alert = cell.alerts
