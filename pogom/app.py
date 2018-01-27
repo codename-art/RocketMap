@@ -4,6 +4,7 @@
 import calendar
 import logging
 import gc
+import math
 
 from flask import Flask, abort, jsonify, render_template, request,\
     make_response, send_from_directory
@@ -17,11 +18,20 @@ from bisect import bisect_left
 
 from .models import (Pokemon, Gym, Pokestop, ScannedLocation,
                      MainWorker, WorkerStatus, Token, HashKeys,
-                     SpawnPoint)
+                     SpawnPoint, Weather)
 from .utils import (get_pokemon_name, get_pokemon_types, get_pokemon_rarity,
-                    now, dottedQuadToNum)
+                    now, dottedQuadToNum, degrees_to_cardinal)
 from .transform import transform_from_wgs_to_gcj
 from .blacklist import fingerprints, get_ip_blacklist
+
+from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import WeatherAlert
+from pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2 \
+    import GameplayWeather
+from pgoapi.protos.pogoprotos.networking.responses\
+    .get_map_objects_response_pb2 import GetMapObjectsResponse
+
+from pogom.weather import get_weather_cells, get_s2_coverage, \
+    get_weather_alerts
 
 log = logging.getLogger(__name__)
 compress = Compress()
@@ -92,6 +102,7 @@ class Pogom(Flask):
         self.route("/robots.txt", methods=['GET'])(self.render_robots_txt)
         self.route("/serviceWorker.min.js", methods=['GET'])(
             self.render_service_worker_js)
+        self.route("/weather", methods=['GET'])(self.get_weather)
         self.route("/scout", methods=['GET'])(self.scout_pokemon)
 
 
@@ -146,6 +157,64 @@ class Pogom(Flask):
             }
         }
         self.db_updates_queue.put((Pokemon, update_data))
+
+    def get_weather(self, page=1):
+
+        args = get_args()
+        db_weathers = Weather.get_weathers()
+
+        def prepare_cell(s):
+            s['loc'] = "{:.6f}, {:.6f}".format(s['latitude'], s['longitude'])
+            s['wind_direction'] = degrees_to_cardinal(s['wind_direction'])
+            s['gameplay_weather'] = GameplayWeather \
+                .WeatherCondition.Name(s['gameplay_weather'])
+            s['severity'] = WeatherAlert.Severity.Name(s['severity'])
+            s['world_time'] = GetMapObjectsResponse \
+                .TimeOfDay.Name(s['world_time'])
+            return s
+
+        headers = [
+            'S2CellLoc',
+            'Gameplay Weather',
+            'CloudLvl',
+            'RainLvl',
+            'WindLvl',
+            'Wind Direction',
+            'SnowLvl',
+            'FogLvl',
+            'Severity',
+            'Warn',
+            'LastUpdated',
+            'Time'
+        ]
+
+        max_weather_per_page = 25
+        max_page = int(math.ceil(len(db_weathers)/float(max_weather_per_page)))
+        if page * max_weather_per_page > len(db_weathers):
+            # Page number is too great, set to last page
+            page = max_page
+        if page < 1:
+            page = 1
+
+        weathers = map(
+            prepare_cell,
+            db_weathers[
+            (page - 1) * max_weather_per_page:page * max_weather_per_page
+            ]
+        )
+
+        return render_template(
+            'weather.html',
+            single_page=(not len(db_weathers) > max_weather_per_page),
+            page=page,
+            max_page=max_page,
+            headers=headers,
+            weathers=weathers,
+            show={
+                'custom_css': args.custom_css,
+                'custom_js': args.custom_js
+            }
+        )
 
     def render_robots_txt(self):
         return render_template('robots.txt')
@@ -489,6 +558,14 @@ class Pogom(Flask):
                   args.status_page_password):
                 d['main_workers'] = MainWorker.get_all()
                 d['workers'] = WorkerStatus.get_all()
+
+        if request.args.get('weather', 'false') == 'true':
+            d['weather'] = get_weather_cells(swLat, swLng, neLat, neLng)
+        if request.args.get('s2cells', 'false') == 'true':
+            d['s2cells'] = get_s2_coverage(swLat, swLng, neLat, neLng)
+        if request.args.get('weatherAlerts', 'false') == 'true':
+            d['weatherAlerts'] = get_weather_alerts(swLat, swLng, neLat, neLng)
+
         return jsonify(d)
 
     def loc(self):

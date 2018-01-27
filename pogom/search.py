@@ -42,14 +42,20 @@ from cachetools import TTLCache
 
 from pgoapi.hash_server import HashServer
 from .models import (parse_map, GymDetails, parse_gyms, MainWorker,
-                     WorkerStatus, HashKeys, ScannedLocation)
-from .utils import now, distance
+                     WorkerStatus, HashKeys, ScannedLocation, Weather)
+
+from .utils import now, distance, degrees_to_cardinal
 from .transform import get_new_coords
 from .account import setup_api, check_login, AccountSet
 from .captcha import captcha_overseer_thread, handle_captcha
 from .proxy import get_new_proxy
 from .apiRequests import gym_get_info, get_map_objects as gmo
 from .transform import jitter_location
+from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import WeatherAlert
+from pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2 \
+    import GameplayWeather
+from pgoapi.protos.pogoprotos.networking.responses \
+    .get_map_objects_response_pb2 import GetMapObjectsResponse
 
 from .account import (AccountSet, get_account, account_failed, account_revive)
 
@@ -95,6 +101,9 @@ def switch_status_printer(display_type, current_page, mainlog,
         elif command.lower() == 'h':
             mainlog.handlers[0].setLevel(logging.CRITICAL)
             display_type[0] = 'hashstatus'
+        elif command.lower() == 'w':
+            mainlog.handlers[0].setLevel(logging.CRITICAL)
+            display_type[0] = 'weatherstatus'
 
 
 # Thread to print out the status of each worker.
@@ -128,6 +137,7 @@ def status_printer(threadStatus, account_failures, logmode, hash_key,
         # Create a list to hold all the status lines, so they can be printed
         # all at once to reduce flicker.
         status_text = []
+        total_pages = 0
 
         if display_type[0] == 'workers':
 
@@ -255,10 +265,55 @@ def status_printer(threadStatus, account_failures, logmode, hash_key,
                         key_instance['maximum'],
                         key_instance['peak']))
 
+        elif display_type[0] == 'weatherstatus':
+            status_text.append(
+                '----------------------------------------------------------')
+            status_text.append('Weather status:')
+            status_text.append(
+                '----------------------------------------------------------')
+
+            status = '{:22} | {:7} | {:6} | {:6} | {:6} | {:5} | {:7} | ' \
+                     '{:14} | {:8} | {:4} | {:5} | {:9}'
+            status_text.append(status.format('S2CellLoc', 'CloudLv', 'RainLv',
+                                             'WindLv', 'SnowLv', 'FogLv',
+                                             'WindDir', 'Gameplay',
+                                             'Severity', 'Warn', 'Time',
+                                             'LastUpdated'))
+
+            db_weathers = Weather.get_weathers()
+            if db_weathers is not None:
+                for weather in db_weathers:
+                    weather['location'] = "{:.6f}, {:.6f}".format(
+                        weather['latitude'], weather['longitude']
+                    )
+                    serverity = 0
+                    warn = 0
+                    if weather['severity']:
+                        serverity = weather['severity']
+                        warn = weather['warn_weather']
+                    status_text.append(status.format(
+                        weather['location'],
+                        weather['cloud_level'],
+                        weather['rain_level'],
+                        weather['wind_level'],
+                        weather['snow_level'],
+                        weather['fog_level'],
+                        degrees_to_cardinal(weather['wind_direction']),
+                        GameplayWeather.WeatherCondition.Name(
+                            weather['gameplay_weather']
+                        ),
+                        WeatherAlert.Severity.Name(serverity),
+                        warn,
+                        GetMapObjectsResponse.TimeOfDay.Name(
+                            weather['world_time']
+                        ),
+                        str(weather['last_updated'])))
+
         # Print the status_text for the current screen.
         status_text.append((
             'Page {}/{}. Page number to switch pages. F to show on hold ' +
-            'accounts. H to show hash status. <ENTER> alone to switch ' +
+            'accounts. H to show hash status. W to show weather status.' +
+            ' <ENTER> alone to switch ' +
             'between status and log view').format(current_page[0],
                                                   total_pages))
         # Clear the screen.
@@ -318,7 +373,14 @@ def worker_status_db_thread(threads_status, name, db_updates_queue):
                     'last_modified': datetime.utcnow(),
                     'accounts_working': status['active_accounts'],
                     'accounts_captcha': status['accounts_captcha'],
-                    'accounts_failed': status['accounts_failed']
+                    'accounts_failed': status['accounts_failed'],
+                    'success': status['success_total'],
+                    'fail': status['fail_total'],
+                    'empty': status['empty_total'],
+                    'skip': status['skip_total'],
+                    'captcha': status['captcha_total'],
+                    'start': status['starttime'],
+                    'elapsed': status['elapsed']
                 }
             elif status['type'] == 'Worker':
                 workers[status['username']] = WorkerStatus.db_format(
@@ -385,6 +447,7 @@ def search_overseer_thread(args, new_location_queue, control_flags, heartb,
         'success_total': 0,
         'fail_total': 0,
         'empty_total': 0,
+        'elapsed': 0,
         'scheduler': args.scheduler,
         'scheduler_status': {'tth_found': 0}
     }
@@ -633,6 +696,7 @@ def get_stats_message(threadStatus, search_items_queue_array, db_updates_queue,
     if elapsed == 0:
         elapsed = 1
 
+    overseer['elapsed'] = elapsed
     sph = overseer['success_total'] * 3600.0 / elapsed
     fph = overseer['fail_total'] * 3600.0 / elapsed
     eph = overseer['empty_total'] * 3600.0 / elapsed
@@ -659,11 +723,12 @@ def get_stats_message(threadStatus, search_items_queue_array, db_updates_queue,
     message += (
         'Total active: {}  |  Success: {} ({:.1f}/hr) | ' +
         'Fails: {} ({:.1f}/hr) | Empties: {} ({:.1f}/hr) | ' +
-        'Skips {} ({:.1f}/hr) | Captchas: {} ({:.1f}/hr)|${:.5f}/hr|${:.3f}/mo'
+        'Skips {} ({:.1f}/hr) | Captchas: {} ({:.1f}/hr) (${:.1f}/hr, ' +
+        '${:.1f}/mo) | Elapsed: {:.1f}h'
     ).format(overseer['active_accounts'], overseer['success_total'], sph,
              overseer['fail_total'], fph, overseer['empty_total'], eph,
              overseer['skip_total'], skph, overseer['captcha_total'], cph,
-             ccost, cmonth)
+             ccost, cmonth, elapsed / 3600.0)
     return message
 
 

@@ -1,3 +1,8 @@
+/*global
+ getS2CellBounds, processWeather, processS2Cell, processWeatherAlerts, updateMainCellWeather
+ */
+// from weather js
+
 //
 // Global map.js variables
 //
@@ -76,7 +81,7 @@ const cryFileTypes = ['wav', 'mp3']
 const genderType = ['♂', '♀', '⚲']
 const unownForm = ['unset', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '!', '?']
 const pokemonWithImages = [
-    2, 3, 5, 6, 8, 9, 11, 28, 31, 34, 38, 59, 62, 65, 68, 71, 73, 76, 82, 89, 91, 94, 103, 105, 110, 112, 123, 125, 126, 129, 131, 134, 135, 136, 137, 139, 143, 144, 145, 146, 150, 153, 156, 159, 243, 244, 245, 248, 249, 250, 302, 303, 320, 359, 382, 383, 384
+    2, 3, 5, 6, 8, 9, 11, 28, 31, 34, 38, 59, 62, 65, 68, 71, 73, 76, 82, 89, 91, 94, 103, 105, 110, 112, 123, 125, 126, 129, 131, 134, 135, 136, 137, 139, 143, 144, 145, 146, 150, 153, 156, 159, 243, 244, 245, 248, 249, 250, 302, 303, 306, 320, 359, 382, 383, 384
 ]
 
 const excludedRaritiesList = [
@@ -476,6 +481,9 @@ function initSidebar() {
     $('#pokemoncries').toggle(Store.get('playSound'))
     $('#cries-switch').prop('checked', Store.get('playCries'))
     $('#map-service-provider').val(Store.get('mapServiceProvider'))
+    $('#weather-cells-switch').prop('checked', Store.get('showWeatherCells'))
+    $('#s2cells-switch').prop('checked', Store.get('showS2Cells'))
+    $('#weather-alerts-switch').prop('checked', Store.get('showWeatherAlerts'))
 
     // Only create the Autocomplete element if it's enabled in template.
     var elSearchBox = document.getElementById('next-location')
@@ -1518,6 +1526,10 @@ function showInBoundsMarkers(markers, type) {
                 if (map.getBounds().contains(marker.getPosition())) {
                     show = true
                 }
+            } else if (type === 's2cell') {
+                if (map.getBounds().intersects(getS2CellBounds(item))) {
+                    show = true
+                }
             }
         }
 
@@ -1563,6 +1575,9 @@ function loadRawData() {
     var loadScanned = Store.get('showScanned')
     var loadSpawnpoints = Store.get('showSpawnpoints')
     var loadLuredOnly = Boolean(Store.get('showLuredPokestopsOnly'))
+    var loadWeather = Store.get('showWeatherCells')
+    var loadS2Cells = Store.get('showS2Cells')
+    var loadWeatherAlerts = Store.get('showWeatherAlerts')
 
     var bounds = map.getBounds()
     var swPoint = bounds.getSouthWest()
@@ -1587,6 +1602,9 @@ function loadRawData() {
             'scanned': loadScanned,
             'lastslocs': lastslocs,
             'spawnpoints': loadSpawnpoints,
+            'weather': loadWeather,
+            's2cells': loadS2Cells,
+            'weatherAlerts': loadWeatherAlerts,
             'lastspawns': lastspawns,
             'swLat': swLat,
             'swLng': swLng,
@@ -1960,12 +1978,19 @@ function updateMap() {
         $.each(result.gyms, processGym)
         $.each(result.scanned, processScanned)
         $.each(result.spawnpoints, processSpawnpoint)
+        $.each(result.weather, processWeather)
+        $.each(result.s2cells, processS2Cell)
+        processWeatherAlerts(result.weatherAlerts)
+        updateMainCellWeather()
         // showInBoundsMarkers(mapData.pokemons, 'pokemon')
         showInBoundsMarkers(mapData.lurePokemons, 'pokemon')
         showInBoundsMarkers(mapData.gyms, 'gym')
         showInBoundsMarkers(mapData.pokestops, 'pokestop')
         showInBoundsMarkers(mapData.scanned, 'scanned')
         showInBoundsMarkers(mapData.spawnpoints, 'inbound')
+        showInBoundsMarkers(mapData.weather, 'weather')
+        showInBoundsMarkers(mapData.s2cells, 's2cell')
+        showInBoundsMarkers(mapData.weatherAlerts, 's2cell')
         clearStaleMarkers()
 
         // We're done processing. Redraw.
@@ -3011,6 +3036,19 @@ $(function () {
         buildSwitchChangeListener(mapData, ['spawnpoints'], 'showSpawnpoints').bind(this)()
     })
     $('#ranges-switch').change(buildSwitchChangeListener(mapData, ['gyms', 'pokemons', 'pokestops'], 'showRanges'))
+
+    $('#weather-cells-switch').change(function () {
+        buildSwitchChangeListener(mapData, ['weather'], 'showWeatherCells').bind(this)()
+    })
+
+    $('#s2cells-switch').change(function () {
+        buildSwitchChangeListener(mapData, ['s2cells'], 'showS2Cells').bind(this)()
+    })
+
+    $('#weather-alerts-switch').change(function () {
+        buildSwitchChangeListener(mapData, ['weatherAlerts'], 'showWeatherAlerts').bind(this)()
+    })
+
 
     $('#pokestops-switch').change(function () {
         var options = {

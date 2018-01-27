@@ -8,6 +8,7 @@ import sys
 import gc
 import time
 import math
+import s2sphere
 from base64 import b64encode
 
 from peewee import (InsertQuery, Check, CompositeKey, ForeignKeyField,
@@ -37,13 +38,20 @@ from .account import check_login, setup_api, pokestop_spinnable, spin_pokestop, 
 from .proxy import get_new_proxy
 from .apiRequests import encounter
 
+
+from pgoapi.protos.pogoprotos.map.weather.weather_alert_pb2 import WeatherAlert
+from pgoapi.protos.pogoprotos.networking.responses \
+    .get_map_objects_response_pb2 import GetMapObjectsResponse
+from pgoapi.protos.pogoprotos.map.weather.gameplay_weather_pb2 \
+    import GameplayWeather
+
 log = logging.getLogger(__name__)
 
 args = get_args()
 flaskDb = FlaskDB()
 cache = TTLCache(maxsize=100, ttl=60 * 5)
 
-db_schema_version = 22
+db_schema_version = 23
 
 
 class MyRetryDB(RetryOperationalError, PooledMySQLDatabase):
@@ -1036,6 +1044,13 @@ class MainWorker(BaseModel):
     accounts_working = IntegerField()
     accounts_captcha = IntegerField()
     accounts_failed = IntegerField()
+    success = IntegerField(default=0)
+    fail = IntegerField(default=0)
+    empty = IntegerField(default=0)
+    skip = IntegerField(default=0)
+    captcha = IntegerField(default=0)
+    start = IntegerField(default=0)
+    elapsed = IntegerField(default=0)
 
     @staticmethod
     def get_account_stats():
@@ -1722,6 +1737,67 @@ class Token(BaseModel):
         return tokens
 
 
+class Weather(BaseModel):
+    s2_cell_id = Utf8mb4CharField(primary_key=True, max_length=50)
+    latitude = DoubleField()
+    longitude = DoubleField()
+    cloud_level = SmallIntegerField(null=True, index=True, default=0)
+    rain_level = SmallIntegerField(null=True, index=True, default=0)
+    wind_level = SmallIntegerField(null=True, index=True, default=0)
+    snow_level = SmallIntegerField(null=True, index=True, default=0)
+    fog_level = SmallIntegerField(null=True, index=True, default=0)
+    wind_direction = SmallIntegerField(null=True, index=True, default=0)
+    gameplay_weather = SmallIntegerField(null=True, index=True, default=0)
+    severity = SmallIntegerField(null=True, index=True, default=0)
+    warn_weather = SmallIntegerField(null=True, index=True, default=0)
+    world_time = SmallIntegerField(null=True, index=True, default=0)
+    last_updated = DateTimeField(
+        default=datetime.utcnow,
+        null=True,
+        index=True)
+
+    @staticmethod
+    def get_weathers():
+        query = Weather.select().dicts()
+
+        weathers = []
+        for w in query:
+            weathers.append(w)
+
+        return weathers
+
+    @staticmethod
+    def get_weather_by_location(swLat, swLng, neLat, neLng, alert):
+        # We can filter by the center of a cell, this deltas can expand
+        # the viewport bounds
+        # So cells with center outside the viewport, but close to it
+        # can be rendered
+        # otherwise edges of cells that intersects with viewport
+        # won't be rendered
+        lat_delta = 0.15
+        lng_delta = 0.4
+        if not alert:
+            query = Weather.select().where(
+                (Weather.latitude >= float(swLat) - lat_delta) &
+                (Weather.longitude >= float(swLng) - lng_delta) &
+                (Weather.latitude <= float(neLat) + lat_delta) &
+                (Weather.longitude <= float(neLng) + lng_delta)
+            ).dicts()
+        else:
+            query = Weather.select().where(
+                (Weather.latitude >= float(swLat) - lat_delta) &
+                (Weather.longitude >= float(swLng) - lng_delta) &
+                (Weather.latitude <= float(neLat) + lat_delta) &
+                (Weather.longitude <= float(neLng) + lng_delta) &
+                (Weather.severity.is_null(False))
+            ).dicts()
+        weathers = []
+        for w in query:
+            weathers.append(w)
+
+        return weathers
+
+
 class HashKeys(BaseModel):
     key = Utf8mb4CharField(primary_key=True, max_length=20)
     maximum = SmallIntegerField(default=0)
@@ -1820,14 +1896,24 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
     sightings = {}
     new_spawn_points = []
     sp_id_list = []
+    s2_cell_id = {}
+    weather_alert = []
+    display_weather = {}
+    gameplay_weather = {}
+    weather = {}
 
     # Consolidate the individual lists in each cell into two lists of Pokemon
     # and a list of forts.
     cells = map_dict['responses']['GET_MAP_OBJECTS'].map_cells
+    cellweathers = map_dict['responses']['GET_MAP_OBJECTS'].client_weather
+    worldtime = map_dict['responses']['GET_MAP_OBJECTS'].time_of_day
     # Get the level for the pokestop spin, and to send to webhook.
     level = account['level']
     # Use separate level indicator for our L30 encounters.
     encounter_level = level
+
+    log.debug(cellweathers)
+    log.debug(worldtime)
 
     for i, cell in enumerate(cells):
         # If we have map responses then use the time from the request
@@ -1849,9 +1935,92 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
         wild_pokemon_count += len(cell.wild_pokemons)
         forts_count += len(cell.forts)
 
+    lat = 0
+    lng = 0
+
+    # 0.85.1 Map Weather
+    if 'weather_last_updated' not in status:
+        status['weather_last_updated'] = {}
+    for i, cell in enumerate(cellweathers):
+        # Parse Map Weather Information
+        s2_cell_id = cell.s2_cell_id
+
+        now = datetime.now()
+        weather_last_updated = status['weather_last_updated'].get(
+                s2_cell_id, datetime.utcfromtimestamp(1)
+            )
+
+        if weather_last_updated.day == now.day and\
+                weather_last_updated.hour == now.hour:
+            break  # already updated this cell in this hour
+
+        status['weather_last_updated'][s2_cell_id] = now
+        display_weather = cell.display_weather
+        gameplay_weather = cell.gameplay_weather
+        weather_alert = cell.alerts
+
+        # Convert Cell To Lat, Long
+        cell_id = s2sphere.CellId(long(s2_cell_id))
+        cell = s2sphere.Cell(cell_id)
+        center = s2sphere.LatLng.from_point(cell.get_center())
+        lat = center.lat().degrees
+        lng = center.lng().degrees
+
     now_secs = date_secs(now_date)
 
     del map_dict['responses']['GET_MAP_OBJECTS']
+
+    # Severe Weather Alerts
+    severity = 0
+    warn = 0
+    if weather_alert:
+        for w in weather_alert:
+            log.info('Weather Alerts Active: %s, Severity Level: %s',
+                     w.warn_weather,
+                     WeatherAlert.Severity.Name(
+                         w.severity
+                     ))
+            severity = w.severity
+            warn = w.warn_weather
+
+    # Hourly Weather Update (On The Hour)
+    if display_weather:
+        gameplayweather = gameplay_weather.gameplay_condition
+        # Weather Table Database Update
+        weather[s2_cell_id] = {
+            's2_cell_id': s2_cell_id,
+            'latitude': lat,
+            'longitude': lng,
+            'cloud_level': display_weather.cloud_level,
+            'rain_level': display_weather.rain_level,
+            'wind_level': display_weather.wind_level,
+            'snow_level': display_weather.snow_level,
+            'fog_level': display_weather.fog_level,
+            'wind_direction': display_weather.wind_direction,
+            'gameplay_weather': gameplayweather,
+            'severity': severity,
+            'warn_weather': warn,
+            'world_time': worldtime,
+        }
+        # Weather Information Log
+        log.info('Weather Info: Cloud Level: %s, Rain Level: %s, ' +
+                 'Wind Level: %s, Snow Level: %s, Fog Level: %s, ' +
+                 'Wind Direction: %s Degreese.', display_weather.cloud_level,
+                 display_weather.rain_level, display_weather.wind_level,
+                 display_weather.snow_level, display_weather.fog_level,
+                 display_weather.wind_direction)
+
+        log.info('GamePlay Conditions: %s - %s Bonus.',
+                 GetMapObjectsResponse.TimeOfDay.Name(worldtime),
+                 GameplayWeather.WeatherCondition.Name(gameplayweather))
+
+        if 'weather' in args.wh_types:
+            wh_weather = weather[s2_cell_id].copy()
+            wh_update_queue.put(('weather', wh_weather))
+
+    log.debug(weather)
+    log.info('Upserted %d weather details.',
+             len(weather))
 
     # If there are no wild or nearby Pokemon...
     if not wild_pokemon and not nearby_pokemon:
@@ -2321,6 +2490,8 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
         db_update_queue.put((ScanSpawnPoint, scan_spawn_points))
         if sightings:
             db_update_queue.put((SpawnpointDetectionData, sightings))
+    if weather:
+        db_update_queue.put((Weather, weather))
 
     if not nearby_pokemon and not wild_pokemon:
         # After parsing the forts, we'll mark this scan as bad due to
@@ -2478,8 +2649,12 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
 
 
     except Exception as e:
-        log.exception('There was an error encountering Pokemon ID %s with ' +
-                      'account %s: %s.',
+        # Account may not be selected yet.
+        if hlvl_account:
+            log.warning('Exception occured during encounter with'
+                        ' high-level account %s.',
+                        hlvl_account['username'])
+        log.exception('There was an error encountering Pokemon ID %s: %s.',
                       pokemon_id,
                       hlvl_account.get('username', 'NONE'),
                       e)
@@ -2678,6 +2853,13 @@ def clean_db_loop(args):
                                  (datetime.utcnow() - timedelta(minutes=2)))))
                 query.execute()
 
+                # Remove old weather
+                query = (Weather
+                         .delete()
+                         .where((Weather.last_updated <
+                                 (datetime.utcnow() - timedelta(minutes=15)))))
+                query.execute()
+
                 # Remove expired HashKeys
                 query = (HashKeys
                          .delete()
@@ -2752,7 +2934,7 @@ def create_tables(db):
     tables = [Pokemon, Pokestop, Gym, Raid, ScannedLocation, GymDetails,
               GymMember, GymPokemon, Trainer, MainWorker, WorkerStatus,
               SpawnPoint, ScanSpawnPoint, SpawnpointDetectionData,
-              Token, LocationAltitude, PlayerLocale, HashKeys]
+              Token, LocationAltitude, PlayerLocale, HashKeys, Weather]
     with db.execution_context():
         for table in tables:
             if not table.table_exists():
@@ -2768,7 +2950,7 @@ def drop_tables(db):
               GymDetails, GymMember, GymPokemon, Trainer, MainWorker,
               WorkerStatus, SpawnPoint, ScanSpawnPoint,
               SpawnpointDetectionData, LocationAltitude, PlayerLocale,
-              Token, HashKeys]
+              Token, HashKeys, Weather]
     with db.execution_context():
         db.execute_sql('SET FOREIGN_KEY_CHECKS=0;')
         for table in tables:
@@ -3159,6 +3341,10 @@ def database_migrate(db, old_ver):
         db.execute_sql('ALTER TABLE `spawnpoint` '
                        'ADD CONSTRAINT CONSTRAINT_4 CHECK ' +
                        '(`latest_seen` <= 3600);')
+
+    if old_ver < 23:
+        db.drop_tables([WorkerStatus])
+        db.drop_tables([MainWorker])
 
     # Always log that we're done.
     log.info('Schema upgrade complete.')
