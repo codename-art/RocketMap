@@ -40,7 +40,7 @@ args = get_args()
 flaskDb = FlaskDB()
 cache = TTLCache(maxsize=100, ttl=60 * 5)
 
-db_schema_version = 22
+db_schema_version = 23
 
 
 class MyRetryDB(RetryOperationalError, PooledMySQLDatabase):
@@ -1033,6 +1033,13 @@ class MainWorker(BaseModel):
     accounts_working = IntegerField()
     accounts_captcha = IntegerField()
     accounts_failed = IntegerField()
+    success = IntegerField(default=0)
+    fail = IntegerField(default=0)
+    empty = IntegerField(default=0)
+    skip = IntegerField(default=0)
+    captcha = IntegerField(default=0)
+    start = IntegerField(default=0)
+    elapsed = IntegerField(default=0)
 
     @staticmethod
     def get_account_stats():
@@ -2406,10 +2413,13 @@ def encounter_pokemon(args, pokemon, account, api, account_sets, status,
                 result = pokemon_info
 
     except Exception as e:
-        log.exception('There was an error encountering Pokemon ID %s with ' +
-                      'account %s: %s.',
+        # Account may not be selected yet.
+        if hlvl_account:
+            log.warning('Exception occured during encounter with'
+                        ' high-level account %s.',
+                        hlvl_account['username'])
+        log.exception('There was an error encountering Pokemon ID %s: %s.',
                       pokemon_id,
-                      hlvl_account['username'],
                       e)
 
     # We're done with the encounter. If it's from an
@@ -3074,6 +3084,10 @@ def database_migrate(db, old_ver):
         db.execute_sql('ALTER TABLE `spawnpoint` '
                        'ADD CONSTRAINT CONSTRAINT_4 CHECK ' +
                        '(`latest_seen` <= 3600);')
+
+    if old_ver < 23:
+        db.drop_tables([WorkerStatus])
+        db.drop_tables([MainWorker])
 
     # Always log that we're done.
     log.info('Schema upgrade complete.')
