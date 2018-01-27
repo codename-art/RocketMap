@@ -3108,8 +3108,7 @@ def database_migrate(db, old_ver):
     }
 
     for new_ver, query in migrations.iteritems():
-        result = migrate_transaction(db, migrator, old_ver, new_ver,
-                                          query)
+        result = migrate_transaction(db, migrator, old_ver, new_ver, query)
         if not result:
             # Something failed in migration, quiting
             return False
@@ -3117,7 +3116,7 @@ def database_migrate(db, old_ver):
     # Update database schema version.
     Versions.update(val=db_schema_version).where(
         Versions.key == 'schema_version').execute()
-    # Always log that we're done.
+    # Always log that we're done.lk
     log.info('Schema upgrade complete.')
     return True
 
