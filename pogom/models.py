@@ -3123,7 +3123,7 @@ def database_migrate(db, old_ver):
 
 def migrate_transaction(db, migrator, old_ver, new_ver, query):
     if old_ver < new_ver:
-        with db.atomic() as transaction:
+        with db.atomic():
             try:
                 query(db, migrator)
                 # Update database schema version.
