@@ -3124,15 +3124,14 @@ def database_migrate(db, old_ver):
 
 def migrate_transaction(db, migrator, old_ver, new_ver, query):
     if old_ver < new_ver:
-        db.begin()
-        try:
-            query(db, migrator)
-            # Update database schema version.
-            Versions.update(val=new_ver).where(
-                Versions.key == 'schema_version').execute()
-        except Exception as e:
-            db.rollback()
-            log.exception(e)
-            return False
-        db.commit()
+        with db.atomic() as transaction:
+            try:
+                query(db, migrator)
+                # Update database schema version.
+                Versions.update(val=new_ver).where(
+                    Versions.key == 'schema_version').execute()
+            except Exception as e:
+                db.rollback()
+                log.exception(e)
+                return False
     return True
