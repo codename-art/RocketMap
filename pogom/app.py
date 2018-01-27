@@ -6,9 +6,6 @@ import logging
 import gc
 import math
 
-from datetime import datetime
-from s2sphere import LatLng
-from bisect import bisect_left
 from flask import Flask, abort, jsonify, render_template, request,\
     make_response, send_from_directory
 from flask.json import JSONEncoder
@@ -16,7 +13,6 @@ from flask_compress import Compress
 from datetime import datetime
 from s2sphere import LatLng
 from pogom.pgscout import scout_error, pgscout_encounter
-from pogom.utils import get_args, get_pokemon_name
 from bisect import bisect_left
 
 from .models import (Pokemon, Gym, Pokestop, ScannedLocation,
