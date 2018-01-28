@@ -866,6 +866,10 @@ var StoreOptions = {
         default: '',
         type: StoreTypes.Number
     },
+    'remember_text_level_notify': {
+        default: 0,
+        type: StoreTypes.Number
+    },
     'excludedRarity': {
         default: 0, // 0: none, 1: <=Common, 2: <=Uncommon, 3: <=Rare, 4: <=Very Rare, 5: <=Ultra Rare
         type: StoreTypes.Number
@@ -1094,6 +1098,26 @@ var mapData = {
     spawnpoints: {}
 }
 
+// Populated by a JSON request.
+var pokemonRarities = {}
+
+function updatePokemonRarities() {
+    $.getJSON('static/dist/data/rarity.json').done(function (data) {
+        pokemonRarities = data
+    }).fail(function () {
+        // Could be disabled/removed.
+        console.log("Couldn't load dynamic rarity JSON.")
+    })
+}
+
+function getPokemonRarity(pokemonId) {
+    if (pokemonRarities.hasOwnProperty(pokemonId)) {
+        return pokemonRarities[pokemonId]
+    }
+
+    return ''
+}
+
 function getGoogleSprite(index, sprite, displayHeight) {
     displayHeight = Math.max(displayHeight, 3)
     var scale = displayHeight / sprite.iconHeight
@@ -1136,12 +1160,10 @@ function setupPokemonMarkerDetails(item, map, scaleByRarity = true, isNotifyPkmn
             'legendary': 50
         }
 
-        if (item.hasOwnProperty('pokemon_rarity')) {
-            const pokemonRarity = item['pokemon_rarity'].toLowerCase()
+        const pokemonRarity = getPokemonRarity(item['pokemon_id']).toLowerCase()
 
-            if (rarityValues.hasOwnProperty(pokemonRarity)) {
-                rarityValue = rarityValues[pokemonRarity]
-            }
+        if (rarityValues.hasOwnProperty(pokemonRarity)) {
+            rarityValue = rarityValues[pokemonRarity]
         }
     }
 
