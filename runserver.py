@@ -258,7 +258,7 @@ def main():
     pgpool_init(args)
 
 
-    # Abort if only-server and no-server are used together
+    # Abort if only-server and no-server are used together.
     if args.only_server and args.no_server:
         log.critical(
             "You can't use no-server and only-server at the same time, silly.")
