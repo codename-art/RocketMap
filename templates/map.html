@@ -291,7 +291,7 @@
             </div>
                   {% endif %}
               {% endif %}
-
+              {% if show.weather_cells %}
             <div class="form-control switch-container">
                 <h3>Weather</h3>
                 <div class="onoffswitch">
@@ -322,6 +322,7 @@
                     </label>
                 </div>
             </div>
+              {% endif %}
           </div>
 
           <h3><i class="fa fa-location-arrow fa-fw"></i>Location &amp; Search Settings</h3>

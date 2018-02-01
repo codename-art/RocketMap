@@ -1979,88 +1979,90 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
     lng = 0
 
     # 0.85.1 Map Weather
-    if 'weather_last_updated' not in status:
-        status['weather_last_updated'] = {}
-    for i, cell in enumerate(cellweathers):
-        # Parse Map Weather Information
-        s2_cell_id = cell.s2_cell_id
+    if not args.no_weather_cells:
+        if 'weather_last_updated' not in status:
+            status['weather_last_updated'] = {}
+        for i, cell in enumerate(cellweathers):
+            # Parse Map Weather Information
+            s2_cell_id = cell.s2_cell_id
 
-        now = datetime.now()
-        weather_last_updated = status['weather_last_updated'].get(
-                s2_cell_id, datetime.utcfromtimestamp(1)
-            )
+            now = datetime.now()
+            weather_last_updated = status['weather_last_updated'].get(
+                    s2_cell_id, datetime.utcfromtimestamp(1)
+                )
 
-        if weather_last_updated.day == now.day and\
-                weather_last_updated.hour == now.hour:
-            break  # already updated this cell in this hour
+            if weather_last_updated.day == now.day and\
+                    weather_last_updated.hour == now.hour:
+                break  # already updated this cell in this hour
 
-        status['weather_last_updated'][s2_cell_id] = now
-        display_weather = cell.display_weather
-        gameplay_weather = cell.gameplay_weather
-        weather_alert = cell.alerts
+            status['weather_last_updated'][s2_cell_id] = now
+            display_weather = cell.display_weather
+            gameplay_weather = cell.gameplay_weather
+            weather_alert = cell.alerts
 
-        # Convert Cell To Lat, Long
-        cell_id = s2sphere.CellId(long(s2_cell_id))
-        cell = s2sphere.Cell(cell_id)
-        center = s2sphere.LatLng.from_point(cell.get_center())
-        lat = center.lat().degrees
-        lng = center.lng().degrees
+            # Convert Cell To Lat, Long
+            cell_id = s2sphere.CellId(long(s2_cell_id))
+            cell = s2sphere.Cell(cell_id)
+            center = s2sphere.LatLng.from_point(cell.get_center())
+            lat = center.lat().degrees
+            lng = center.lng().degrees
 
-    now_secs = date_secs(now_date)
+        now_secs = date_secs(now_date)
 
-    del map_dict['responses']['GET_MAP_OBJECTS']
+        del map_dict['responses']['GET_MAP_OBJECTS']
 
-    # Severe Weather Alerts
-    severity = 0
-    warn = 0
-    if weather_alert:
-        for w in weather_alert:
-            log.info('Weather Alerts Active: %s, Severity Level: %s',
-                     w.warn_weather,
-                     WeatherAlert.Severity.Name(
-                         w.severity
-                     ))
-            severity = w.severity
-            warn = w.warn_weather
+        # Severe Weather Alerts
+        severity = 0
+        warn = 0
+        if weather_alert:
+            for w in weather_alert:
+                log.info('Weather Alerts Active: %s, Severity Level: %s',
+                         w.warn_weather,
+                         WeatherAlert.Severity.Name(
+                             w.severity
+                         ))
+                severity = w.severity
+                warn = w.warn_weather
 
-    # Hourly Weather Update (On The Hour)
-    if display_weather:
-        gameplayweather = gameplay_weather.gameplay_condition
-        # Weather Table Database Update
-        weather[s2_cell_id] = {
-            's2_cell_id': s2_cell_id,
-            'latitude': lat,
-            'longitude': lng,
-            'cloud_level': display_weather.cloud_level,
-            'rain_level': display_weather.rain_level,
-            'wind_level': display_weather.wind_level,
-            'snow_level': display_weather.snow_level,
-            'fog_level': display_weather.fog_level,
-            'wind_direction': display_weather.wind_direction,
-            'gameplay_weather': gameplayweather,
-            'severity': severity,
-            'warn_weather': warn,
-            'world_time': worldtime,
-        }
-        # Weather Information Log
-        log.info('Weather Info: Cloud Level: %s, Rain Level: %s, ' +
-                 'Wind Level: %s, Snow Level: %s, Fog Level: %s, ' +
-                 'Wind Direction: %s Degreese.', display_weather.cloud_level,
-                 display_weather.rain_level, display_weather.wind_level,
-                 display_weather.snow_level, display_weather.fog_level,
-                 display_weather.wind_direction)
+        # Hourly Weather Update (On The Hour)
+        if display_weather:
+            gameplayweather = gameplay_weather.gameplay_condition
+            # Weather Table Database Update
+            weather[s2_cell_id] = {
+                's2_cell_id': s2_cell_id,
+                'latitude': lat,
+                'longitude': lng,
+                'cloud_level': display_weather.cloud_level,
+                'rain_level': display_weather.rain_level,
+                'wind_level': display_weather.wind_level,
+                'snow_level': display_weather.snow_level,
+                'fog_level': display_weather.fog_level,
+                'wind_direction': display_weather.wind_direction,
+                'gameplay_weather': gameplayweather,
+                'severity': severity,
+                'warn_weather': warn,
+                'world_time': worldtime,
+            }
+            # Weather Information Log
+            log.info('Weather Info: Cloud Level: %s, Rain Level: %s, ' +
+                     'Wind Level: %s, Snow Level: %s, Fog Level: %s, ' +
+                     'Wind Direction: %s Degreese.',
+                     display_weather.cloud_level,
+                     display_weather.rain_level, display_weather.wind_level,
+                     display_weather.snow_level, display_weather.fog_level,
+                     display_weather.wind_direction)
 
-        log.info('GamePlay Conditions: %s - %s Bonus.',
-                 GetMapObjectsResponse.TimeOfDay.Name(worldtime),
-                 GameplayWeather.WeatherCondition.Name(gameplayweather))
+            log.info('GamePlay Conditions: %s - %s Bonus.',
+                     GetMapObjectsResponse.TimeOfDay.Name(worldtime),
+                     GameplayWeather.WeatherCondition.Name(gameplayweather))
 
-        if 'weather' in args.wh_types:
-            wh_weather = weather[s2_cell_id].copy()
-            wh_update_queue.put(('weather', wh_weather))
+            if 'weather' in args.wh_types:
+                wh_weather = weather[s2_cell_id].copy()
+                wh_update_queue.put(('weather', wh_weather))
 
-    log.debug(weather)
-    log.info('Upserted %d weather details.',
-             len(weather))
+            log.debug(weather)
+            log.info('Upserted %d weather details.',
+                     len(weather))
 
     # If there are no wild or nearby Pokemon...
     if not wild_pokemon and not nearby_pokemon:
