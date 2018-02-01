@@ -16,7 +16,6 @@ from flask_compress import Compress
 
 from pogom.weather import get_weather_cells, get_s2_coverage, \
     get_weather_alerts
-from .blacklist import fingerprints, get_ip_blacklist
 from .models import (Pokemon, Gym, Pokestop, ScannedLocation,
                      MainWorker, WorkerStatus, Token, HashKeys,
                      SpawnPoint, Weather)
