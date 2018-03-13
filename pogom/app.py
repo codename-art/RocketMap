@@ -554,8 +554,13 @@ class Pogom(Flask):
                 d['error'] = 'Access denied'
             elif (request.args.get('password', None) ==
                   args.status_page_password):
-                d['main_workers'] = MainWorker.get_all()
-                d['workers'] = WorkerStatus.get_all()
+                max_status_age = args.status_page_filter
+                if max_status_age > 0:
+                    d['main_workers'] = MainWorker.get_recent(max_status_age)
+                    d['workers'] = WorkerStatus.get_recent(max_status_age)
+                else:
+                    d['main_workers'] = MainWorker.get_all()
+                    d['workers'] = WorkerStatus.get_all()
 
         if request.args.get('weather', 'false') == 'true':
             d['weather'] = get_weather_cells(swLat, swLng, neLat, neLng)
@@ -688,8 +693,13 @@ class Pogom(Flask):
 
         if request.form.get('password', None) == args.status_page_password:
             d['login'] = 'ok'
-            d['main_workers'] = MainWorker.get_all()
-            d['workers'] = WorkerStatus.get_all()
+            max_status_age = args.status_page_filter
+            if max_status_age > 0:
+                d['main_workers'] = MainWorker.get_recent(max_status_age)
+                d['workers'] = WorkerStatus.get_recent(max_status_age)
+            else:
+                d['main_workers'] = MainWorker.get_all()
+                d['workers'] = WorkerStatus.get_all()
             d['hashkeys'] = HashKeys.get_obfuscated_keys()
         else:
             d['login'] = 'failed'

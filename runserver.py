@@ -378,7 +378,7 @@ def main():
         t.start()
 
     # Database cleaner; really only need one ever.
-    if args.enable_clean:
+    if args.db_cleanup:
         t = Thread(target=clean_db_loop, name='db-cleaner', args=(args,))
         t.daemon = True
         t.start()
@@ -527,9 +527,7 @@ def set_log_and_verbosity(log):
     if not os.path.exists(args.log_path):
         os.mkdir(args.log_path)
     if not args.no_file_logs:
-        date = strftime('%Y%m%d_%H%M')
-        filename = os.path.join(
-            args.log_path, '{}_{}.log'.format(date, args.status_name))
+        filename = os.path.join(args.log_path, args.log_filename)
         filelog = logging.FileHandler(filename)
         filelog.setFormatter(logging.Formatter(
             '%(asctime)s [%(threadName)18s][%(module)14s][%(levelname)8s] ' +
