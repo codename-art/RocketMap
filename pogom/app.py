@@ -502,15 +502,24 @@ class Pogom(Flask):
                     d['main_workers'] = MainWorker.get_all()
                     d['workers'] = WorkerStatus.get_all()
 
-                if request.args.get('weather', 'false') == 'true'\
-                        and not args.no_weather_cells:
-                    d['weather'] = get_weather_cells(swLat, swLng, neLat, neLng)
-                if request.args.get('s2cells', 'false') == 'true'\
-                        and not args.no_weather_cells:
-                    d['s2cells'] = get_s2_coverage(swLat, swLng, neLat, neLng)
-                if request.args.get('weatherAlerts', 'false') == 'true'\
-                        and not args.no_weather_cells:
-                    d['weatherAlerts'] = get_weather_alerts(swLat, swLng, neLat, neLng)
+                if (request.args.get('weather', 'false') == 'true'
+                        and not args.no_weather_cells):
+                    d['weather'] = get_weather_cells(swLat,
+                                                     swLng,
+                                                     neLat,
+                                                     neLng)
+                if (request.args.get('s2cells', 'false') == 'true'
+                        and not args.no_weather_cells):
+                    d['s2cells'] = get_s2_coverage(swLat,
+                                                   swLng,
+                                                   neLat,
+                                                   neLng)
+                if (request.args.get('weatherAlerts', 'false') == 'true'
+                        and not args.no_weather_cells):
+                    d['weatherAlerts'] = get_weather_alerts(swLat,
+                                                            swLng,
+                                                            neLat,
+                                                            neLng)
 
         return jsonify(d)
 
