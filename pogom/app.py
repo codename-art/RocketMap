@@ -14,8 +14,8 @@ from flask import Flask, abort, jsonify, render_template, request,\
 from flask.json import JSONEncoder
 from flask_compress import Compress
 
-from pogom.weather import get_weather_cells, get_s2_coverage, \
-    get_weather_alerts
+from pogom.weather import (get_weather_cells, get_s2_coverage,
+                           get_weather_alerts)
 from .models import (Pokemon, Gym, Pokestop, ScannedLocation,
                      MainWorker, WorkerStatus, Token, HashKeys,
                      SpawnPoint, Weather)
@@ -101,12 +101,11 @@ class Pogom(Flask):
         self.route("/weather", methods=['GET'])(self.get_weather)
 
     def get_weather(self, page=1):
-
         args = get_args()
-        db_weathers = Weather.get_weathers()
+        db_weather = Weather.get_all_weather()
 
         def prepare_cell(s):
-            s['loc'] = "{:.6f}, {:.6f}".format(s['latitude'], s['longitude'])
+            s['loc'] = '{:.6f}, {:.6f}'.format(s['latitude'], s['longitude'])
             s['wind_direction'] = degrees_to_cardinal(s['wind_direction'])
             s['gameplay_weather'] = GameplayWeather\
                 .WeatherCondition.Name(s['gameplay_weather'])
@@ -131,27 +130,27 @@ class Pogom(Flask):
         ]
 
         max_weather_per_page = 25
-        max_page = int(math.ceil(len(db_weathers)/float(max_weather_per_page)))
-        if page * max_weather_per_page > len(db_weathers):
-            # Page number is too great, set to last page
+        max_page = int(math.ceil(len(db_weather)/float(max_weather_per_page)))
+        if page * max_weather_per_page > len(db_weather):
+            # Page number is too great, set to last page.
             page = max_page
         if page < 1:
             page = 1
 
-        weathers = map(
+        weather = map(
             prepare_cell,
-            db_weathers[
+            db_weather[
                 (page - 1) * max_weather_per_page:page * max_weather_per_page
             ]
         )
 
         return render_template(
             'weather.html',
-            single_page=(not len(db_weathers) > max_weather_per_page),
+            single_page=(len(db_weather) <= max_weather_per_page),
             page=page,
             max_page=max_page,
             headers=headers,
-            weathers=weathers,
+            weather=weather,
             show={
                 'custom_css': args.custom_css,
                 'custom_js': args.custom_js
@@ -504,22 +503,16 @@ class Pogom(Flask):
 
                 if (request.args.get('weather', 'false') == 'true'
                         and not args.no_weather_cells):
-                    d['weather'] = get_weather_cells(swLat,
-                                                     swLng,
-                                                     neLat,
-                                                     neLng)
+                    d['weather'] = get_weather_cells(swLat, swLng,
+                                                     neLat, neLng)
                 if (request.args.get('s2cells', 'false') == 'true'
                         and not args.no_weather_cells):
-                    d['s2cells'] = get_s2_coverage(swLat,
-                                                   swLng,
-                                                   neLat,
-                                                   neLng)
+                    d['s2cells'] = get_s2_coverage(swLat, swLng,
+                                                   neLat, neLng)
                 if (request.args.get('weatherAlerts', 'false') == 'true'
                         and not args.no_weather_cells):
-                    d['weatherAlerts'] = get_weather_alerts(swLat,
-                                                            swLng,
-                                                            neLat,
-                                                            neLng)
+                    d['weatherAlerts'] = get_weather_alerts(swLat, swLng,
+                                                            neLat, neLng)
 
         return jsonify(d)
 

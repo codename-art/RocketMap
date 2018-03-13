@@ -33,7 +33,7 @@ def prepare_weather_cells_data(db_weathers):
     return db_weathers
 
 
-# workaround due a bug in POGOprotos
+# Workaround due a bug in POGOprotos.
 def get_cell_from_string(str_id):
     raw_id = long(str_id)
     if raw_id < 0:  # overflow
@@ -55,6 +55,7 @@ def get_s2_coverage(swLat, swLng, neLat, neLng):
     p1 = s2sphere.LatLng.from_degrees(float(swLat), float(swLng))
     p2 = s2sphere.LatLng.from_degrees(float(neLat), float(neLng))
     covering = r.get_covering(s2sphere.LatLngRect.from_point_pair(p1, p2))
+
     for cell_id in covering:
         cell_to_render = {}
         rect_bound = s2sphere.Cell(cell_id)
@@ -66,15 +67,13 @@ def get_s2_coverage(swLat, swLng, neLat, neLng):
         }
         cell_to_render['vertices'] = get_vertices_from_s2cell(rect_bound)
 
-        # log.info(rect_bound.approx_area())
-
         del rect_bound
         geoms.append(cell_to_render)
 
     return geoms
 
 
-# convert s2cell vertices to google map api format
+# Convert s2cell vertices to Google Maps API format.
 def get_vertices_from_s2cell(rect_bound):
     vertices = []
     for i in range(0, 4):

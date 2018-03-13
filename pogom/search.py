@@ -275,17 +275,20 @@ def status_printer(threadStatus, account_failures, logmode, hash_key,
                                              'Severity', 'Warn', 'Time',
                                              'LastUpdated'))
 
-            db_weathers = Weather.get_weathers()
-            if db_weathers is not None:
-                for weather in db_weathers:
+            db_weather = Weather.get_all_weather()
+            if db_weather:
+                for weather in db_weather:
                     weather['location'] = "{:.6f}, {:.6f}".format(
                         weather['latitude'], weather['longitude']
                     )
+
                     serverity = 0
                     warn = 0
+
                     if weather['severity']:
                         serverity = weather['severity']
                         warn = weather['warn_weather']
+
                     status_text.append(status.format(
                         weather['location'],
                         weather['cloud_level'],
