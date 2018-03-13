@@ -2857,8 +2857,8 @@ def clean_db_loop(args):
                     db_clean_forts(args.db_cleanup_forts)
 
                 # Remove old weather.
-                if args.db_cleanup_weather:
-                    db_cleanup_weather(args.db_cleanup_weather)
+                if args.db_cleanup_s2_weather:
+                    db_cleanup_weather(args.db_cleanup_s2_weather)
 
                 log.info('Full database cleanup completed.')
                 full_cleanup_timer = now

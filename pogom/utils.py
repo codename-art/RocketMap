@@ -420,6 +420,11 @@ def get_args():
                              'after last valid scan. '
                              'Default: 0, 0 to disable.'),
                        type=int, default=0)
+    group.add_argument('-DCs2', '--db-cleanup-s2-weather',
+                       help=('Clear S2 cell weather data from database X '
+                             'minutes after last update. '
+                             'Default: 70, 0 to disable.'),
+                       type=int, default=70)
     parser.add_argument(
         '-wh',
         '--webhook',
