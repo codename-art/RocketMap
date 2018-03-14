@@ -74,6 +74,7 @@
     "processWeatherAlerts": true,
     "updateMainCellWeather": true,
     "map": true,
-    "jsts": true
+    "jsts": true,
+    "resizeWeatherMarkers": true
   }
 }

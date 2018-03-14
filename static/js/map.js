@@ -273,6 +273,9 @@ function initMap() { // eslint-disable-line no-unused-vars
             redrawPokemon(mapData.pokemons)
             redrawPokemon(mapData.lurePokemons)
 
+            // Update our S2 cell weather markers.
+            resizeWeatherMarkers()
+
             // We're done processing the list. Repaint.
             markerCluster.repaint()
         }, 500)

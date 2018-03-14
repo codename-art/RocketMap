@@ -116,15 +116,12 @@ function processWeatherAlert(i, item) {
  * @param newAlerts
  */
 function deleteObsoleteWeatherAlerts(newAlerts) {
-    var toRemove = []
-    $.each(mapData.weatherAlerts, function (i, item) {
-        if (!(item['s2_cell_id'] in newAlerts)) {
-            safeDelMarker(item)
-            toRemove.push(i)
+    const s2CellIds = Object.keys(mapData.weatherAlerts)
+    s2CellIds.forEach(s2CellId => {
+        if (!newAlerts.some(entry => entry.s2_cell_id === s2CellId)) {
+            safeDelMarker(mapData.weatherAlerts[s2CellId])
+            delete mapData.weatherAlerts[s2CellId]
         }
-    })
-    $.each(toRemove, function (i, id) {
-        delete mapData.weatherAlerts[id]
     })
 }
 
@@ -220,12 +217,17 @@ function setupWeatherMarker(item) {
         icon: createMarkerIcon(weatherImageUrl)
     })
 
-    map.addListener('zoom_changed', function () {
-        marker.setIcon(createMarkerIcon(marker.icon.url))
-        marker.setMap(map)
-    })
-
     return marker
+}
+
+// Redraw the existing markers.
+function resizeWeatherMarkers() {  // eslint-disable-line no-unused-vars
+    $.each(mapData.weather, (i, item) => {
+        if (item.hasOwnProperty('marker') && item.marker) {
+            item.marker.setIcon(createMarkerIcon(item.marker.icon.url))
+            item.marker.setMap(map)
+        }
+    })
 }
 
 
