@@ -451,13 +451,14 @@ A `captcha` event is sent whenever a scan worker encounters a captcha.
 | `severity`            | Dangerous weather warning level: 0, 1 or 3    |  `0`                      |
 | `world_time`          | Day = 1, night = 2                            |  `1`                      |
 
-1. Possible weather conditions:
+Possible weather conditions:
 
 | Status | Description                                |
 | ------ | ------------------------------------------ |
+| `0`    | No weather                                 |
 | `1`    | Clear                                      |
 | `2`    | Rain                                       |
-| `3`    | Partly Cloudy                              |
+| `3`    | Partly cloudy                              |
 | `4`    | Cloudy                                     |
 | `5`    | Windy                                      |
 | `6`    | Snow                                       |

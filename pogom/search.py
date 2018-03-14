@@ -309,9 +309,9 @@ def status_printer(threadStatus, account_failures, logmode, hash_key,
 
         # Print the status_text for the current screen.
         status_text.append((
-            'Page {}/{}. Page number to switch pages. F to show on hold ' +
-            'accounts. H to show hash status. W to show weather status.' +
-            ' <ENTER> alone to switch ' +
+            'Page {}/{}. Page number to switch pages. F to show on hold '
+            'accounts. H to show hash status. W to show weather status. '
+            '<ENTER> alone to switch '
             'between status and log view').format(current_page[0],
                                                   total_pages))
         # Clear the screen.

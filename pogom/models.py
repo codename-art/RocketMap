@@ -1975,8 +1975,8 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
 
             now = datetime.now()
             weather_last_updated = status['weather_last_updated'].get(
-                    s2_cell_id, datetime.utcfromtimestamp(1)
-                )
+                s2_cell_id, datetime.utcfromtimestamp(1)
+            )
 
             # Already updated this cell in this hour.
             if (weather_last_updated.day == now.day and
@@ -1989,7 +1989,7 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
             weather_alert = cell.alerts
 
             # Convert cell to lat, lng.
-            cell_id = s2sphere.CellId(long(s2_cell_id))
+            cell_id = s2sphere.CellId(s2_cell_id)
             cell = s2sphere.Cell(cell_id)
             center = s2sphere.LatLng.from_point(cell.get_center())
             lat = center.lat().degrees
@@ -2014,7 +2014,7 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
 
         # Hourly weather update (on the hour).
         if display_weather:
-            gameplayweather = gameplay_weather.gameplay_condition
+            weather_condition = gameplay_weather.gameplay_condition
             # Weather DB update.
             weather[s2_cell_id] = {
                 's2_cell_id': s2_cell_id,
@@ -2026,7 +2026,7 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
                 'snow_level': display_weather.snow_level,
                 'fog_level': display_weather.fog_level,
                 'wind_direction': display_weather.wind_direction,
-                'gameplay_weather': gameplayweather,
+                'gameplay_weather': weather_condition,
                 'severity': severity,
                 'warn_weather': warn,
                 'world_time': worldtime,
@@ -2043,7 +2043,7 @@ def parse_map(args, map_dict, scan_coords, scan_location, db_update_queue,
 
             log.debug('Gameplay conditions: %s - %s bonus.',
                       GetMapObjectsResponse.TimeOfDay.Name(worldtime),
-                      GameplayWeather.WeatherCondition.Name(gameplayweather))
+                      GameplayWeather.WeatherCondition.Name(weather_condition))
 
             if 'weather' in args.wh_types:
                 wh_weather = weather[s2_cell_id].copy()

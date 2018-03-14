@@ -27,7 +27,6 @@ const alertTexts = {
     2: 'Extreme'
 }
 
-
 /**
  * Parses info about weather cell and draws icon.
  * @param i index from $.each()
@@ -55,7 +54,6 @@ function processWeather(i, item) { // eslint-disable-line no-unused-vars
     }
 }
 
-
 /**
  * Parses info about s2cell and draws polygon.
  * @param i i index from $.each()
@@ -75,7 +73,6 @@ function processS2Cell(i, item) { // eslint-disable-line no-unused-vars
     }
 }
 
-
 /**
  * Do main work with array of weather alerts.
  * @param weatherAlerts
@@ -84,7 +81,6 @@ function processWeatherAlerts(weatherAlerts) { // eslint-disable-line no-unused-
     deleteObsoleteWeatherAlerts(weatherAlerts)
     $.each(weatherAlerts, processWeatherAlert)
 }
-
 
 /**
  * Draws colored polygon for weather severity condition.
@@ -110,7 +106,6 @@ function processWeatherAlert(i, item) {
     }
 }
 
-
 /**
  * If drawn cell not exist in new alert array, it should be removed.
  * @param newAlerts
@@ -125,7 +120,6 @@ function deleteObsoleteWeatherAlerts(newAlerts) {
     })
 }
 
-
 /**
  * safe setMap(null)
  * @param item
@@ -135,7 +129,6 @@ function safeDelMarker(item) {
         item.marker.setMap(null)
     }
 }
-
 
 /**
  * Creates path for weather icon based on gameplay_weather and world_time.
@@ -176,16 +169,16 @@ function getWeatherImageUrl(item, dark = true) {
  * @param item
  * @returns {*}
  */
-function getalertImageUrl(item) {
-    var alertimageUrl
+function getAlertImageUrl(item) {
+    var alertImageUrl
 
     if (item.severity === 1) {
-        alertimageUrl = 'static/images/weather/' + weatherImages[15]
+        alertImageUrl = 'static/images/weather/' + weatherImages[15]
     } else if (item.severity === 2) {
-        alertimageUrl = 'static/images/weather/' + weatherImages[16]
+        alertImageUrl = 'static/images/weather/' + weatherImages[16]
     }
 
-    return alertimageUrl
+    return alertImageUrl
 }
 
 /**
@@ -229,7 +222,6 @@ function resizeWeatherMarkers() {  // eslint-disable-line no-unused-vars
     })
 }
 
-
 /**
  * Creates Polygon for s2cell.
  * @param item
@@ -245,7 +237,6 @@ function setupS2CellPolygon(item) {
         fillColor: '#00ff00'
     })
 }
-
 
 /**
  * Adds fillColor for s2cell polygon.
@@ -269,7 +260,6 @@ function createCellAlert(item) {
     return cell
 }
 
-
 /**
  * Calculates square bound for s2cell.
  * @param s2Cell
@@ -286,7 +276,6 @@ function getS2CellBounds(s2Cell) { // eslint-disable-line no-unused-vars
 
     return bounds
 }
-
 
 // Weather top icon.
 var $weatherInfo = document.querySelector('#weatherInfo')
@@ -331,7 +320,7 @@ function updateMainCellWeather() { // eslint-disable-line no-unused-vars
             alertText.setAttribute('style', 'font-size: 10px; position: relative; left: -2px;')
             // Alert icon.
             var alertIcon = document.createElement('img')
-            alertIcon.setAttribute('src', getalertImageUrl(s2Cell))
+            alertIcon.setAttribute('src', getAlertImageUrl(s2Cell))
             alertIcon.setAttribute('style', 'height: 25px; vertical-align: middle;')
 
             $weatherInfo.appendChild(alertIcon)
@@ -345,7 +334,6 @@ function updateMainCellWeather() { // eslint-disable-line no-unused-vars
         $weatherInfo.appendChild(windText)
     }
 }
-
 
 function degreesToCardinal(d) {
     var dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
@@ -394,7 +382,6 @@ function getMainS2Cell() {
 
     return maxCoverageData
 }
-
 
 /**
  * Creates jsts polygon from coordinates array.

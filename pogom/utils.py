@@ -420,7 +420,7 @@ def get_args():
                              'after last valid scan. '
                              'Default: 0, 0 to disable.'),
                        type=int, default=0)
-    group.add_argument('-DCs2', '--db-cleanup-s2-weather',
+    group.add_argument('-DCwe', '--db-cleanup-weather',
                        help=('Clear S2 cell weather data from database X '
                              'minutes after last update. '
                              'Default: 70, 0 to disable.'),
@@ -892,7 +892,7 @@ def distance(pos1, pos2):
 def degrees_to_cardinal(d):
     dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
             "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
-    ix = int((d + 11.25)/22.5 - 0.02)
+    ix = int(((d + 11.25) / 22.5) - 0.02)
     return dirs[ix % 16]
 
 

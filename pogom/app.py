@@ -130,7 +130,8 @@ class Pogom(Flask):
         ]
 
         max_weather_per_page = 25
-        max_page = int(math.ceil(len(db_weather)/float(max_weather_per_page)))
+        max_page = int(math.ceil(len(db_weather) /
+                                 float(max_weather_per_page)))
         if page * max_weather_per_page > len(db_weather):
             # Page number is too great, set to last page.
             page = max_page
