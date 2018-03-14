@@ -225,7 +225,6 @@ function resizeWeatherMarkers() {  // eslint-disable-line no-unused-vars
     $.each(mapData.weather, (i, item) => {
         if (item.hasOwnProperty('marker') && item.marker) {
             item.marker.setIcon(createMarkerIcon(item.marker.icon.url))
-            item.marker.setMap(map)
         }
     })
 }
